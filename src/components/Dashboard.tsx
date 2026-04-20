@@ -50,7 +50,7 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
   const [filter, setFilter] = useState<FilterKey>('critical');
   const [query, setQuery] = useState('');
   const [showTestnets, setShowTestnets] = useState(false);
-  const [activeOnly, setActiveOnly] = useState(true);
+  const [activeOnly, setActiveOnly] = useState(false);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
   const isActive = (chain: ProcessedChain): boolean =>
@@ -632,12 +632,13 @@ function Methodology() {
           </p>
         </div>
         <div>
-          <div className="font-semibold text-text">Active chains</div>
+          <div className="font-semibold text-text">TVL &amp; &ldquo;Active chains&rdquo;</div>
           <p className="mt-1">
-            By default we hide inactive chains — those with no DefiLlama TVL data and less than{' '}
-            <span className="font-semibold text-text">$1M</span> on-chain. A curated list of major
-            L1s/L2s (Ethereum, Base, Arbitrum, etc.) is always kept regardless of TVL data.
-            Toggle &ldquo;Active chains only&rdquo; off to see everything.
+            Every chain in both source registries is shown by default. For the ~12% of chains
+            that DefiLlama tracks, we surface a <span className="font-semibold text-safe">TVL</span>{' '}
+            badge when value ≥ $1M. Flip the &ldquo;Active chains only&rdquo; toggle to trim the
+            list to chains with ≥ $1M TVL or on our notable-name pin list — useful when you want
+            to focus on chains that actually hold assets.
           </p>
         </div>
         <div>
