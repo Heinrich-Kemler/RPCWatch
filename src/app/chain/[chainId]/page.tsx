@@ -212,8 +212,6 @@ export default async function ChainDetailPage({ params }: PageProps) {
         </section>
 
         <section className="mt-4 text-xs text-muted">
-          <span>Built by Weaving Web 3</span>
-          <span className="mx-2">·</span>
           <span className="font-medium text-critical">
             Built by crypto Goblin &amp; Shai — best frens
           </span>

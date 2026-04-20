@@ -266,7 +266,6 @@ Found a chain we misclassified, or want to add one to the notable list?
 ## Credits
 
 - Data: [ethereum-lists/chains](https://github.com/ethereum-lists/chains).
-- Built by Weaving Web 3.
 - Built by crypto Goblin & Shai — best frens.
 
 Not financial or security advice. Verify everything.

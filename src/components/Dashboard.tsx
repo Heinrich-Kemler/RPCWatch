@@ -599,7 +599,6 @@ function Footer() {
           >
             Open source
           </a>
-          <span className="text-text">Built by Weaving Web 3</span>
           <span className="font-medium text-critical">
             Built by crypto Goblin &amp; Shai — best frens
           </span>
