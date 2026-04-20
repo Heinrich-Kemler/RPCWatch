@@ -50,16 +50,21 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
   const [filter, setFilter] = useState<FilterKey>('critical');
   const [query, setQuery] = useState('');
   const [showTestnets, setShowTestnets] = useState(false);
+  const [activeOnly, setActiveOnly] = useState(true);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+
+  const isActive = (chain: ProcessedChain): boolean =>
+    chain.isNotable || (chain.tvlUsd !== null && chain.tvlUsd >= SIGNIFICANT_TVL_USD);
 
   const visibleUniverse = useMemo(
     () =>
       chains.filter((chain) => {
         if (chain.isDeprecated) return false;
         if (!showTestnets && chain.isTestnet) return false;
+        if (activeOnly && !isActive(chain)) return false;
         return true;
       }),
-    [chains, showTestnets],
+    [chains, showTestnets, activeOnly],
   );
 
   const filtered = useMemo(() => {
@@ -78,9 +83,17 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
         return false;
       })
       .sort((left, right) => {
+        // 1. Pin notable names to the top
         if (left.isNotable !== right.isNotable) {
           return left.isNotable ? -1 : 1;
         }
+        // 2. Rank by TVL descending so high-stakes chains surface first
+        const leftTvl = left.tvlUsd ?? 0;
+        const rightTvl = right.tvlUsd ?? 0;
+        if (leftTvl !== rightTvl) {
+          return rightTvl - leftTvl;
+        }
+        // 3. Break remaining ties by RPC count (asc for danger tabs, desc for Safe)
         if (left.publicRpcCount !== right.publicRpcCount) {
           return safestFirst
             ? right.publicRpcCount - left.publicRpcCount
@@ -122,6 +135,8 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
 
         <Disclaimer summary={summary} />
 
+        <Methodology />
+
         <SearchAndFilters
           filter={filter}
           setFilter={setFilter}
@@ -129,6 +144,8 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
           setQuery={setQuery}
           showTestnets={showTestnets}
           setShowTestnets={setShowTestnets}
+          activeOnly={activeOnly}
+          setActiveOnly={setActiveOnly}
           universe={visibleUniverse}
         />
 
@@ -228,6 +245,8 @@ function SearchAndFilters({
   setQuery,
   showTestnets,
   setShowTestnets,
+  activeOnly,
+  setActiveOnly,
   universe,
 }: {
   filter: FilterKey;
@@ -236,6 +255,8 @@ function SearchAndFilters({
   setQuery: (value: string) => void;
   showTestnets: boolean;
   setShowTestnets: (value: boolean) => void;
+  activeOnly: boolean;
+  setActiveOnly: (value: boolean) => void;
   universe: ProcessedChain[];
 }) {
   return (
@@ -250,6 +271,19 @@ function SearchAndFilters({
             className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-muted focus:border-accent focus:bg-card focus:outline-none focus:ring-2 focus:ring-accent/25"
           />
         </div>
+
+        <label
+          className="flex shrink-0 items-center gap-2 text-sm text-muted"
+          title="Only show chains with >= $1M TVL on DefiLlama or on our notable-chain list. Dead chains are hidden."
+        >
+          <input
+            type="checkbox"
+            checked={activeOnly}
+            onChange={(event) => setActiveOnly(event.target.checked)}
+            className="h-4 w-4 rounded border-border bg-card accent-accent"
+          />
+          Active chains only
+        </label>
 
         <label className="flex shrink-0 items-center gap-2 text-sm text-muted">
           <input
@@ -562,6 +596,61 @@ function ChainRow({
         )}
       </div>
     </li>
+  );
+}
+
+function Methodology() {
+  return (
+    <details className="group mb-8 rounded-2xl border border-border bg-card shadow-card">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-text">
+        <span className="flex items-center gap-2">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-accent">
+            ?
+          </span>
+          Methodology — how we classify chains
+        </span>
+        <span className="text-xs text-muted transition group-open:rotate-180" aria-hidden>
+          ▾
+        </span>
+      </summary>
+      <div className="grid gap-4 border-t border-border px-5 py-4 text-sm text-muted sm:grid-cols-2">
+        <div>
+          <div className="font-semibold text-text">Public RPC count</div>
+          <p className="mt-1">
+            We take the RPC list from both sources, union by URL, and drop any entry containing a{' '}
+            <code className="rounded bg-surface px-1">{'${VARIABLE}'}</code> placeholder (those
+            require an API key and are not usable by a stranger on the internet).
+          </p>
+        </div>
+        <div>
+          <div className="font-semibold text-text">Risk tiers</div>
+          <p className="mt-1">
+            <span className="font-semibold text-critical">Critical</span> = 1 public RPC ·{' '}
+            <span className="font-semibold text-warning">At risk</span> = 2–3 ·{' '}
+            <span className="font-semibold text-safe">Safe</span> = 4+. Risk is about redundancy,
+            not endorsement — a safe chain can still have a bad operator in the list.
+          </p>
+        </div>
+        <div>
+          <div className="font-semibold text-text">Active chains</div>
+          <p className="mt-1">
+            By default we hide inactive chains — those with no DefiLlama TVL data and less than{' '}
+            <span className="font-semibold text-text">$1M</span> on-chain. A curated list of major
+            L1s/L2s (Ethereum, Base, Arbitrum, etc.) is always kept regardless of TVL data.
+            Toggle &ldquo;Active chains only&rdquo; off to see everything.
+          </p>
+        </div>
+        <div>
+          <div className="font-semibold text-text">Sort order</div>
+          <p className="mt-1">
+            Notable names first, then by TVL descending, then by RPC count. On the Safe tab the
+            most-covered chains come first; on Critical and At Risk the highest-TVL chains
+            come first — because a single-RPC chain with $1B of assets at stake is more
+            interesting than one with $0.
+          </p>
+        </div>
+      </div>
+    </details>
   );
 }
 
