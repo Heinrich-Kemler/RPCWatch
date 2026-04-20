@@ -6,9 +6,20 @@ RPC Watch is a public security dashboard that counts the public RPC
 endpoints listed for every known EVM chain and flags the ones that rely on
 a single point of failure.
 
-Live data comes from **[chainid.network/chains.json](https://chainid.network/chains.json)**
-— the raw registry behind chainlist.org, maintained by the
-[ethereum-lists/chains](https://github.com/ethereum-lists/chains) project.
+Data comes from **two community registries, merged**:
+
+- **[chainlist.org/rpcs.json](https://chainlist.org/rpcs.json)** — per-RPC
+  privacy (`tracking: none / limited / yes`), open-source flag per RPC,
+  TVL per chain (sourced from DefiLlama), and the structured `isTestnet`
+  signal.
+- **[chainid.network/chains.json](https://chainid.network/chains.json)**
+  — the raw registry behind chainlist.org, maintained by the
+  [ethereum-lists/chains](https://github.com/ethereum-lists/chains)
+  project.
+
+We deduplicate by RPC URL and keep every endpoint either source has seen,
+so coverage is broader (and more resistant to any one registry being
+offline or stale) than either source alone.
 
 ---
 
@@ -48,20 +59,31 @@ familiar names aren't buried underneath long-tail rollups.
 
 ---
 
-## Important disclaimer — our only data source
+## Important disclaimer — our data sources
 
-**RPC Watch has exactly one source of information: `chainid.network/chains.json`.**
+**RPC Watch pulls from two community registries and merges them.** Both
+are community-maintained; neither is authoritative.
 
-- This dataset is maintained by volunteers in the
-  [ethereum-lists/chains](https://github.com/ethereum-lists/chains)
-  GitHub repo. Anyone can open a PR to add or change an endpoint.
-- The dataset can be **out of date** (projects deprecate endpoints without
-  updating chainlist) or **incomplete** (a project may run a public RPC
-  without ever registering it).
+- [chainlist.org/rpcs.json](https://chainlist.org/rpcs.json) — the list
+  powering [chainlist.org](https://chainlist.org/), maintained by
+  DefiLlama. Carries per-RPC metadata (privacy policy, open-source flag)
+  and chain-level TVL.
+- [chainid.network/chains.json](https://chainid.network/chains.json) —
+  the [ethereum-lists/chains](https://github.com/ethereum-lists/chains)
+  registry. Anyone can open a PR to add or change an endpoint.
+
+Known limitations even with both sources:
+
+- A chain may have a public RPC that neither registry has indexed —
+  particularly newer rollups or private deployments.
+- A registered RPC may be offline, misconfigured, or rate-limited in
+  practice even though it's listed.
 - A chain showing as *Critical* here doesn't automatically mean its
-  community has no alternatives — it means only one is listed.
+  community has no alternatives — it means only one is listed publicly.
 - A chain showing as *Safe* doesn't guarantee every listed endpoint
   works, is well-operated, or is trustworthy.
+- TVL is self-reported by DefiLlama and only available for ~12% of
+  chains. We only surface it when > $1M and only for mainnet.
 
 Always verify endpoints directly with the project before relying on them,
 especially if assets are at stake.

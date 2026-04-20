@@ -1,4 +1,5 @@
 import { isNotableChain } from './notableChains';
+import { fetchMergedRawChains } from './sources';
 
 export type Explorer = {
   name?: string;
@@ -15,6 +16,19 @@ export type NativeCurrency = {
 
 export type RiskLevel = 'critical' | 'at-risk' | 'safe' | 'no-data';
 
+export type ChainSource = 'chainlist.org' | 'ethereum-lists';
+export type RpcTracking = 'none' | 'limited' | 'yes' | 'unspecified' | 'unknown';
+export type RpcKind = 'http' | 'wss' | 'other';
+
+export type RpcEndpoint = {
+  url: string;
+  kind: RpcKind;
+  isTemplate: boolean;
+  tracking: RpcTracking;
+  isOpenSource: boolean | null;
+  sources: ChainSource[];
+};
+
 export type ProcessedChain = {
   chainId: number;
   name: string;
@@ -26,6 +40,8 @@ export type ProcessedChain = {
   templateRpcs: string[];
   wssRpcs: string[];
   httpRpcs: string[];
+  rpcDetails: RpcEndpoint[];
+  publicRpcDetails: RpcEndpoint[];
   publicRpcCount: number;
   riskLevel: RiskLevel;
   riskScore: number;
@@ -34,8 +50,12 @@ export type ProcessedChain = {
   isTestnet: boolean;
   isDeprecated: boolean;
   isNotable: boolean;
+  tvlUsd: number | null;
+  sources: ChainSource[];
   lastChecked: string;
 };
+
+export const SIGNIFICANT_TVL_USD = 1_000_000;
 
 type RawNativeCurrency = Partial<NativeCurrency> | null | undefined;
 
@@ -210,7 +230,7 @@ export function calculateRiskLevel(publicRpcCount: number): RiskLevel {
 
 export function processChains(rawChains: RawChain[], checkedAt = new Date().toISOString()): ProcessedChain[] {
   return rawChains
-    .map((rawChain) => {
+    .map<ProcessedChain | null>((rawChain) => {
       const chainId = normalizeChainId(rawChain.chainId);
 
       if (chainId === null) {
@@ -227,6 +247,14 @@ export function processChains(rawChains: RawChain[], checkedAt = new Date().toIS
       const httpRpcs = rpc.filter((rpcUrl) => isHttpRpc(rpcUrl));
       const publicRpcCount = publicRpcs.length;
       const riskScore = calculateRiskScore(publicRpcCount);
+      const rpcDetails = rpc.map<RpcEndpoint>((url) => ({
+        url,
+        kind: classifyRpcKind(url),
+        isTemplate: isTemplateRpc(url),
+        tracking: 'unknown',
+        isOpenSource: null,
+        sources: ['ethereum-lists'],
+      }));
 
       return {
         chainId,
@@ -239,6 +267,8 @@ export function processChains(rawChains: RawChain[], checkedAt = new Date().toIS
         templateRpcs,
         wssRpcs,
         httpRpcs,
+        rpcDetails,
+        publicRpcDetails: rpcDetails.filter((entry) => !entry.isTemplate),
         publicRpcCount,
         riskLevel: calculateRiskLevel(publicRpcCount),
         riskScore,
@@ -247,8 +277,10 @@ export function processChains(rawChains: RawChain[], checkedAt = new Date().toIS
         isTestnet: isTestnetName(name),
         isDeprecated: isDeprecatedChain(name, chainId),
         isNotable: isNotableChain(chainId),
+        tvlUsd: null,
+        sources: ['ethereum-lists'],
         lastChecked: checkedAt,
-      } satisfies ProcessedChain;
+      };
     })
     .filter((chain): chain is ProcessedChain => chain !== null)
     .sort((left, right) => {
@@ -260,6 +292,116 @@ export function processChains(rawChains: RawChain[], checkedAt = new Date().toIS
         return left.publicRpcCount - right.publicRpcCount;
       }
 
+      return left.name.localeCompare(right.name);
+    });
+}
+
+function classifyRpcKind(url: string): RpcKind {
+  if (isHttpRpc(url)) return 'http';
+  if (isWebsocketRpc(url)) return 'wss';
+  return 'other';
+}
+
+function normalizeTracking(value: string | null | undefined): RpcTracking {
+  if (typeof value !== 'string') return 'unknown';
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'none' || normalized === 'limited' || normalized === 'yes' || normalized === 'unspecified') {
+    return normalized;
+  }
+  return 'unknown';
+}
+
+type MergedRpcLike = {
+  url: string;
+  tracking?: string | null;
+  isOpenSource?: boolean | null;
+  sources: ChainSource[];
+};
+
+type MergedRawLike = {
+  chainId: number;
+  name: string;
+  shortName: string;
+  chain: string;
+  rpc: MergedRpcLike[];
+  nativeCurrency?: Partial<NativeCurrency> | null;
+  explorers?: Array<Partial<Explorer> | null> | null;
+  infoURL?: string | null;
+  isTestnetHint?: boolean;
+  tvl?: number | null;
+  sources: ChainSource[];
+};
+
+export function processMergedChains(
+  merged: MergedRawLike[],
+  checkedAt = new Date().toISOString(),
+): ProcessedChain[] {
+  return merged
+    .map((raw) => {
+      const chainId = raw.chainId;
+      const name = normalizeString(raw.name, `Chain ${chainId}`);
+      const shortName = normalizeString(raw.shortName, name.toLowerCase().replace(/\s+/g, '-'));
+      const chainField = normalizeString(raw.chain, name);
+
+      const rpcDetails = raw.rpc.map<RpcEndpoint>((entry) => ({
+        url: entry.url,
+        kind: classifyRpcKind(entry.url),
+        isTemplate: isTemplateRpc(entry.url),
+        tracking: normalizeTracking(entry.tracking),
+        isOpenSource: typeof entry.isOpenSource === 'boolean' ? entry.isOpenSource : null,
+        sources: Array.from(new Set(entry.sources)) as ChainSource[],
+      }));
+
+      const rpc = rpcDetails.map((entry) => entry.url);
+      const publicRpcDetails = rpcDetails.filter((entry) => !entry.isTemplate);
+      const publicRpcs = publicRpcDetails.map((entry) => entry.url);
+      const templateRpcs = rpcDetails.filter((entry) => entry.isTemplate).map((entry) => entry.url);
+      const wssRpcs = rpcDetails.filter((entry) => entry.kind === 'wss').map((entry) => entry.url);
+      const httpRpcs = rpcDetails.filter((entry) => entry.kind === 'http').map((entry) => entry.url);
+      const publicRpcCount = publicRpcDetails.length;
+      const riskScore = calculateRiskScore(publicRpcCount);
+      const isTestnet =
+        typeof raw.isTestnetHint === 'boolean' ? raw.isTestnetHint : isTestnetName(name);
+      // chainlist.org replicates mainnet TVL onto sibling testnet entries, so
+      // null it out for testnets to avoid showing a testnet as having $117B TVL.
+      const tvlUsd =
+        !isTestnet && typeof raw.tvl === 'number' && Number.isFinite(raw.tvl) && raw.tvl > 0
+          ? raw.tvl
+          : null;
+
+      return {
+        chainId,
+        name,
+        shortName,
+        chain: chainField,
+        nativeCurrency: normalizeNativeCurrency(raw.nativeCurrency ?? null),
+        rpc,
+        publicRpcs,
+        templateRpcs,
+        wssRpcs,
+        httpRpcs,
+        rpcDetails,
+        publicRpcDetails,
+        publicRpcCount,
+        riskLevel: calculateRiskLevel(publicRpcCount),
+        riskScore,
+        explorers: normalizeExplorers(raw.explorers ?? null),
+        infoURL: normalizeString(raw.infoURL ?? null),
+        isTestnet,
+        isDeprecated: isDeprecatedChain(name, chainId),
+        isNotable: isNotableChain(chainId),
+        tvlUsd,
+        sources: Array.from(new Set(raw.sources)) as ChainSource[],
+        lastChecked: checkedAt,
+      } as ProcessedChain;
+    })
+    .sort((left, right) => {
+      if (right.riskScore !== left.riskScore) {
+        return right.riskScore - left.riskScore;
+      }
+      if (left.publicRpcCount !== right.publicRpcCount) {
+        return left.publicRpcCount - right.publicRpcCount;
+      }
       return left.name.localeCompare(right.name);
     });
 }
@@ -286,8 +428,14 @@ export async function fetchRawChains(init?: FetchWithNextCacheInit): Promise<Raw
 }
 
 export async function getProcessedChains(init?: FetchWithNextCacheInit): Promise<ProcessedChain[]> {
-  const rawChains = await fetchRawChains(init);
-  return processChains(rawChains);
+  const { chains } = await fetchMergedRawChains(init);
+  return processMergedChains(chains);
+}
+
+export async function getProcessedChainBundle(init?: FetchWithNextCacheInit) {
+  const { chains, summary } = await fetchMergedRawChains(init);
+  const processed = processMergedChains(chains);
+  return { chains: processed, summary };
 }
 
 export function getChainById(chains: ProcessedChain[], chainId: number): ProcessedChain | undefined {

@@ -4,12 +4,16 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 import type { ProcessedChain } from '../lib/chains';
+import { SIGNIFICANT_TVL_USD } from '../lib/chains';
+import { formatCompactUsd } from '../lib/format';
 import { riskPalette, rpcCountPalette } from '../lib/risk';
+import type { SourceFetchSummary } from '../lib/sources';
 
 type FilterKey = 'all' | 'critical' | 'at-risk' | 'safe';
 
 type DashboardProps = {
   chains: ProcessedChain[];
+  summary: SourceFetchSummary;
 };
 
 const FILTERS: { key: FilterKey; label: string; matches: (chain: ProcessedChain) => boolean }[] = [
@@ -42,7 +46,7 @@ function tabCount(chains: ProcessedChain[], key: FilterKey): number {
   return filter ? chains.filter(filter.matches).length : 0;
 }
 
-export default function Dashboard({ chains }: DashboardProps) {
+export default function Dashboard({ chains, summary }: DashboardProps) {
   const [filter, setFilter] = useState<FilterKey>('critical');
   const [query, setQuery] = useState('');
   const [showTestnets, setShowTestnets] = useState(false);
@@ -116,7 +120,7 @@ export default function Dashboard({ chains }: DashboardProps) {
       <div className="mx-auto w-full max-w-6xl px-6 py-12 sm:py-16">
         <Hero stats={stats} />
 
-        <Disclaimer />
+        <Disclaimer summary={summary} />
 
         <SearchAndFilters
           filter={filter}
@@ -362,6 +366,11 @@ function CriticalCallout({
             >
               {chain.publicRpcs[0]}
             </Link>
+            {chain.tvlUsd !== null && chain.tvlUsd >= SIGNIFICANT_TVL_USD && (
+              <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-critical">
+                {formatCompactUsd(chain.tvlUsd)} TVL at risk
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -466,6 +475,22 @@ function ChainRow({
                 Testnet
               </span>
             )}
+            {chain.tvlUsd !== null && chain.tvlUsd >= SIGNIFICANT_TVL_USD && (
+              <span
+                className="rounded-full bg-green-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-safe"
+                title="TVL reported by chainlist.org (via DefiLlama)"
+              >
+                TVL {formatCompactUsd(chain.tvlUsd)}
+              </span>
+            )}
+            {chain.sources.length > 1 && (
+              <span
+                className="rounded-full border border-border bg-surface px-2 py-0.5 text-[0.65rem] uppercase tracking-wider text-muted"
+                title="Present in both chainlist.org and ethereum-lists"
+              >
+                2 sources
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -540,15 +565,24 @@ function ChainRow({
   );
 }
 
-function Disclaimer() {
+function Disclaimer({ summary }: { summary: SourceFetchSummary }) {
   return (
     <section className="mb-8 flex gap-3 rounded-2xl border border-border bg-card p-5 text-sm shadow-card">
       <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-base font-semibold text-accent">
         i
       </div>
       <div className="text-muted">
-        <span className="font-semibold text-text">Data source.</span> RPC Watch reads the public
-        RPC list published by{' '}
+        <span className="font-semibold text-text">Dual-source coverage.</span> RPC Watch merges
+        two independent public registries:{' '}
+        <a
+          href="https://chainlist.org/rpcs.json"
+          target="_blank"
+          rel="noreferrer"
+          className="font-medium text-accent hover:underline"
+        >
+          chainlist.org
+        </a>{' '}
+        and{' '}
         <a
           href="https://chainid.network/chains.json"
           target="_blank"
@@ -557,7 +591,7 @@ function Disclaimer() {
         >
           chainid.network
         </a>{' '}
-        (the community-maintained{' '}
+        (the{' '}
         <a
           href="https://github.com/ethereum-lists/chains"
           target="_blank"
@@ -566,9 +600,16 @@ function Disclaimer() {
         >
           ethereum-lists/chains
         </a>{' '}
-        registry behind chainlist.org). That dataset is our <em>only</em> source of information.
-        It can lag behind reality or miss endpoints a project hasn&apos;t registered — always
-        verify with the project directly before trusting an endpoint with assets.
+        registry). We deduplicate by URL and keep every endpoint either source has seen.{' '}
+        <span className="font-medium text-text">
+          {summary.mergedCount.toLocaleString()} chains
+        </span>{' '}
+        tracked — {summary.inBoth.toLocaleString()} appear in both sources,{' '}
+        {summary.onlyInChainlist.toLocaleString()} only in chainlist.org,{' '}
+        {summary.onlyInEthereumLists.toLocaleString()} only in ethereum-lists.
+        These lists are community-maintained and can lag reality or miss endpoints a project
+        hasn&apos;t registered — always verify with the project directly before trusting an
+        endpoint with assets.
       </div>
     </section>
   );
