@@ -60,23 +60,23 @@ export default async function ChainDetailPage({ params }: PageProps) {
           </Link>
         </nav>
 
-        <header className="rounded-2xl border border-border bg-card p-8 shadow-[0_10px_40px_rgba(0,0,0,0.3)]">
+        <header className="rounded-2xl border border-border bg-card p-8 shadow-card">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                <span className="rounded-full border border-border bg-bg px-2.5 py-1 font-mono">
+                <span className="rounded-full border border-border bg-surface px-2.5 py-1 font-mono">
                   Chain ID {chain.chainId}
                 </span>
-                <span className="rounded-full border border-border bg-bg px-2.5 py-1">
+                <span className="rounded-full border border-border bg-surface px-2.5 py-1">
                   {chain.nativeCurrency.symbol} · {chain.nativeCurrency.name}
                 </span>
                 {chain.isNotable && (
-                  <span className="rounded-full border border-border bg-bg px-2.5 py-1 uppercase tracking-wider">
+                  <span className="rounded-full bg-blue-50 px-2.5 py-1 font-semibold uppercase tracking-wider text-accent">
                     Notable
                   </span>
                 )}
                 {chain.isTestnet && (
-                  <span className="rounded-full border border-border bg-bg px-2.5 py-1 uppercase tracking-wider">
+                  <span className="rounded-full border border-border bg-surface px-2.5 py-1 uppercase tracking-wider">
                     Testnet
                   </span>
                 )}
@@ -102,24 +102,36 @@ export default async function ChainDetailPage({ params }: PageProps) {
           </div>
 
           {chain.riskLevel === 'critical' && (
-            <div className="mt-6 rounded-xl border border-critical/40 bg-critical/10 p-4 text-sm text-text">
+            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm">
               <div className="font-semibold text-critical">Why this matters</div>
               <p className="mt-1 text-muted">
                 This chain currently has only 1 public RPC endpoint. All wallets, dApps, and users
                 relying on this chain use the same endpoint. A single outage makes this chain
-                unreachable.
+                unreachable — and a compromise lets an attacker feed every user the same wrong
+                view of the chain.
               </p>
             </div>
           )}
 
           {chain.riskLevel === 'no-data' && (
-            <div className="mt-6 rounded-xl border border-border bg-bg/60 p-4 text-sm text-muted">
+            <div className="mt-6 rounded-xl border border-border bg-surface p-4 text-sm text-muted">
               No public RPC endpoints are listed on chainlist for this chain. Any listed RPCs
               require API keys.
             </div>
           )}
 
-          <div className="mt-6">
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            {chain.infoURL && (
+              <a
+                href={chain.infoURL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-md border border-accent/20 bg-blue-50 px-3 py-2 text-xs font-semibold text-accent transition hover:bg-blue-100"
+              >
+                Visit project website
+                <span aria-hidden>↗</span>
+              </a>
+            )}
             <ShareButtons
               chainName={chain.name}
               publicRpcCount={chain.publicRpcCount}
@@ -128,7 +140,7 @@ export default async function ChainDetailPage({ params }: PageProps) {
           </div>
         </header>
 
-        <section className="mt-8 rounded-2xl border border-border bg-card p-6">
+        <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-card">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
             Public RPC endpoints
           </h2>
@@ -149,7 +161,7 @@ export default async function ChainDetailPage({ params }: PageProps) {
             <RpcGroup label="WebSocket" urls={wssPublic} />
             {otherPublic.length > 0 && <RpcGroup label="Other" urls={otherPublic} />}
             {chain.publicRpcs.length === 0 && (
-              <div className="rounded-xl border border-border bg-bg/60 p-4 text-sm text-muted">
+              <div className="rounded-xl border border-border bg-surface p-4 text-sm text-muted">
                 No public RPC endpoints listed.
               </div>
             )}
@@ -157,13 +169,13 @@ export default async function ChainDetailPage({ params }: PageProps) {
         </section>
 
         {chain.explorers.length > 0 && (
-          <section className="mt-8 rounded-2xl border border-border bg-card p-6">
+          <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-card">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Explorers</h2>
             <ul className="mt-4 space-y-2">
               {chain.explorers.map((explorer) => (
                 <li
                   key={explorer.url}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-bg/70 px-4 py-3 text-sm"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-sm"
                 >
                   <div className="min-w-0">
                     <div className="truncate text-text">{explorer.name ?? explorer.url}</div>
@@ -173,7 +185,7 @@ export default async function ChainDetailPage({ params }: PageProps) {
                     href={explorer.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-md border border-border bg-card px-3 py-1 text-xs text-muted hover:border-critical hover:text-critical"
+                    className="rounded-md border border-border bg-card px-3 py-1 text-xs text-muted shadow-sm transition hover:border-accent hover:text-accent"
                   >
                     Open ↗
                   </a>
@@ -183,26 +195,28 @@ export default async function ChainDetailPage({ params }: PageProps) {
           </section>
         )}
 
-        <section className="mt-8 text-xs text-muted">
-          Data source:{' '}
+        <section className="mt-8 rounded-2xl border border-border bg-surface p-5 text-xs text-muted">
+          <strong className="text-text">Disclaimer.</strong> RPC Watch reflects the public RPC
+          endpoints listed on{' '}
           <a
             href="https://chainid.network/chains.json"
             target="_blank"
             rel="noreferrer"
-            className="hover:text-text"
+            className="font-medium text-accent hover:underline"
           >
             chainid.network
-          </a>
-          {chain.infoURL && (
-            <>
-              {' · '}
-              <a href={chain.infoURL} target="_blank" rel="noreferrer" className="hover:text-text">
-                {chain.infoURL}
-              </a>
-            </>
-          )}
-          <span className="mx-2">·</span>
+          </a>{' '}
+          (the ethereum-lists/chains registry behind chainlist.org). It is a community-maintained
+          dataset and is the sole source of information shown here. It may be out of date or
+          incomplete — always verify endpoints with the project directly before relying on them.
+        </section>
+
+        <section className="mt-4 text-xs text-muted">
           <span>Built by Weaving Web 3</span>
+          <span className="mx-2">·</span>
+          <span className="font-medium text-critical">
+            Built by crypto Goblin &amp; Shai — best frens
+          </span>
         </section>
       </div>
     </main>
@@ -214,7 +228,7 @@ function RpcGroup({ label, urls }: { label: string; urls: string[] }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted">
+      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted">
         <span>{label}</span>
         <span>{urls.length}</span>
       </div>
@@ -222,7 +236,7 @@ function RpcGroup({ label, urls }: { label: string; urls: string[] }) {
         {urls.map((url) => (
           <li
             key={url}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-bg/70 px-4 py-3"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3"
           >
             <div className="flex items-center gap-2 min-w-0">
               <span className="shrink-0 rounded-md border border-border bg-card px-2 py-0.5 text-[0.65rem] uppercase tracking-wider text-muted">

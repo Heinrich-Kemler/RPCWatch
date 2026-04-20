@@ -61,6 +61,7 @@ export default function Dashboard({ chains }: DashboardProps) {
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     const matcher = FILTERS.find((entry) => entry.key === filter)?.matches ?? (() => true);
+    const safestFirst = filter === 'safe';
 
     return visibleUniverse
       .filter(matcher)
@@ -77,7 +78,9 @@ export default function Dashboard({ chains }: DashboardProps) {
           return left.isNotable ? -1 : 1;
         }
         if (left.publicRpcCount !== right.publicRpcCount) {
-          return left.publicRpcCount - right.publicRpcCount;
+          return safestFirst
+            ? right.publicRpcCount - left.publicRpcCount
+            : left.publicRpcCount - right.publicRpcCount;
         }
         return left.name.localeCompare(right.name);
       });
@@ -112,6 +115,8 @@ export default function Dashboard({ chains }: DashboardProps) {
     <main className="min-h-screen bg-bg text-text">
       <div className="mx-auto w-full max-w-6xl px-6 py-12 sm:py-16">
         <Hero stats={stats} />
+
+        <Disclaimer />
 
         <SearchAndFilters
           filter={filter}
@@ -148,18 +153,25 @@ function Hero({
 }) {
   return (
     <header className="mb-10">
-      <div className="mb-8 flex items-center gap-3">
-        <div className="relative h-3 w-3 rounded-full bg-critical pulse-critical" />
-        <span className="text-xs uppercase tracking-[0.2em] text-muted">RPC Watch</span>
+      <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 shadow-sm">
+        <span className="relative flex h-2 w-2 items-center justify-center">
+          <span className="absolute h-2 w-2 rounded-full bg-critical pulse-critical" />
+          <span className="relative h-2 w-2 rounded-full bg-critical" />
+        </span>
+        <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted">
+          Live · chainid.network
+        </span>
       </div>
 
-      <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">RPC Watch</h1>
+      <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+        RPC <span className="text-critical">Watch</span>
+      </h1>
       <p className="mt-4 max-w-2xl text-lg text-muted">
         Which blockchains are one outage away from going dark?
       </p>
 
       <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatTile label="Chains monitored" value={stats.total} tone="muted" />
+        <StatTile label="Chains monitored" value={stats.total} tone="text" />
         <StatTile label="Critical (1 RPC)" value={stats.critical} tone="critical" />
         <StatTile label="At risk (2–3)" value={stats.atRisk} tone="warning" />
         <StatTile label="Well covered (4+)" value={stats.safe} tone="safe" />
@@ -175,7 +187,7 @@ function StatTile({
 }: {
   label: string;
   value: number;
-  tone: 'critical' | 'warning' | 'safe' | 'muted';
+  tone: 'critical' | 'warning' | 'safe' | 'text';
 }) {
   const toneClass =
     tone === 'critical'
@@ -186,8 +198,17 @@ function StatTile({
       ? 'text-safe'
       : 'text-text';
 
+  const borderClass =
+    tone === 'critical'
+      ? 'border-red-100'
+      : tone === 'warning'
+      ? 'border-orange-100'
+      : tone === 'safe'
+      ? 'border-green-100'
+      : 'border-border';
+
   return (
-    <div className="rounded-2xl border border-border bg-card px-5 py-6 shadow-[0_10px_40px_rgba(0,0,0,0.3)]">
+    <div className={`rounded-2xl border ${borderClass} bg-card px-5 py-6 shadow-card`}>
       <div className="text-xs uppercase tracking-wider text-muted">{label}</div>
       <div className={`mt-2 text-3xl font-semibold sm:text-4xl ${toneClass}`}>
         {value.toLocaleString()}
@@ -214,15 +235,15 @@ function SearchAndFilters({
   universe: ProcessedChain[];
 }) {
   return (
-    <section className="sticky top-0 z-10 -mx-6 mb-6 bg-bg/80 px-6 pb-4 pt-2 backdrop-blur">
-      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center">
+    <section className="sticky top-0 z-10 -mx-6 mb-6 bg-bg/90 px-6 pb-4 pt-2 backdrop-blur">
+      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-card sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search by name, chain ID, or RPC URL…"
-            className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text placeholder:text-muted focus:border-critical focus:outline-none focus:ring-2 focus:ring-critical/40"
+            className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-muted focus:border-accent focus:bg-card focus:outline-none focus:ring-2 focus:ring-accent/25"
           />
         </div>
 
@@ -231,7 +252,7 @@ function SearchAndFilters({
             type="checkbox"
             checked={showTestnets}
             onChange={(event) => setShowTestnets(event.target.checked)}
-            className="h-4 w-4 rounded border-border bg-bg accent-critical"
+            className="h-4 w-4 rounded border-border bg-card accent-accent"
           />
           Include testnets
         </label>
@@ -241,21 +262,21 @@ function SearchAndFilters({
         {FILTERS.map((entry) => {
           const count = tabCount(universe, entry.key);
           const active = filter === entry.key;
+          const activeStyle =
+            entry.key === 'critical'
+              ? 'border-red-300 bg-red-50 text-critical'
+              : entry.key === 'at-risk'
+              ? 'border-orange-300 bg-orange-50 text-warning'
+              : entry.key === 'safe'
+              ? 'border-green-300 bg-green-50 text-safe'
+              : 'border-slate-300 bg-card text-text';
           return (
             <button
               key={entry.key}
               type="button"
               onClick={() => setFilter(entry.key)}
               className={`rounded-full border px-4 py-2 text-xs font-medium uppercase tracking-wider transition ${
-                active
-                  ? entry.key === 'critical'
-                    ? 'border-critical/40 bg-critical/15 text-critical'
-                    : entry.key === 'at-risk'
-                    ? 'border-warning/40 bg-warning/15 text-warning'
-                    : entry.key === 'safe'
-                    ? 'border-safe/40 bg-safe/15 text-safe'
-                    : 'border-border bg-card text-text'
-                  : 'border-border bg-card text-muted hover:text-text'
+                active ? activeStyle : 'border-border bg-card text-muted hover:text-text'
               }`}
             >
               {entry.label}
@@ -276,9 +297,12 @@ function CriticalCallout({
   totalCritical: number;
 }) {
   return (
-    <section className="mb-8 rounded-2xl border border-critical/40 bg-gradient-to-b from-critical/10 to-transparent p-6 shadow-[0_0_40px_rgba(239,68,68,0.12)]">
+    <section className="mb-8 overflow-hidden rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-card p-6 shadow-card">
       <div className="flex items-start gap-3">
-        <div className="mt-1 h-2 w-2 rounded-full bg-critical pulse-critical" />
+        <span className="relative flex h-2.5 w-2.5 translate-y-2 items-center justify-center">
+          <span className="absolute h-2.5 w-2.5 rounded-full bg-critical pulse-critical" />
+          <span className="relative h-2.5 w-2.5 rounded-full bg-critical" />
+        </span>
         <div>
           <h2 className="text-xl font-semibold text-critical">
             Critical: Single RPC Chains
@@ -287,33 +311,58 @@ function CriticalCallout({
             These chains have exactly one public RPC endpoint. If it goes offline, the chain
             effectively becomes unreachable for most users — wallets, dApps, and bridges all depend
             on the same endpoint.{' '}
-            <span className="text-text">{totalCritical.toLocaleString()}</span> chains in total.
+            <span className="font-semibold text-text">
+              {totalCritical.toLocaleString()}
+            </span>{' '}
+            chains in total.
           </p>
         </div>
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {chains.map((chain) => (
-          <Link
+          <div
             key={chain.chainId}
-            href={`/chain/${chain.chainId}`}
-            className="group rounded-xl border border-critical/30 bg-card/80 p-4 transition hover:border-critical hover:bg-card"
+            className="group rounded-xl border border-red-100 bg-card p-4 shadow-sm transition hover:border-red-300 hover:shadow-lift"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-text group-hover:text-critical">
+            <div className="flex items-center justify-between gap-2">
+              <Link
+                href={`/chain/${chain.chainId}`}
+                className="flex min-w-0 items-center gap-2"
+              >
+                <span className="truncate text-sm font-semibold text-text group-hover:text-critical">
                   {chain.name}
                 </span>
                 {chain.isNotable && (
-                  <span className="rounded-full bg-critical/20 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-critical">
+                  <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-accent">
                     Notable
                   </span>
                 )}
+              </Link>
+              <div className="flex shrink-0 items-center gap-2 text-xs text-muted">
+                {chain.infoURL && (
+                  <a
+                    href={chain.infoURL}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={`Open ${chain.name} website`}
+                    aria-label={`Open ${chain.name} website`}
+                    className="hover:text-critical"
+                  >
+                    <span aria-hidden>↗</span>
+                  </a>
+                )}
+                <span>#{chain.chainId}</span>
               </div>
-              <span className="text-xs text-muted">#{chain.chainId}</span>
             </div>
-            <div className="mt-3 truncate text-xs text-muted">{chain.publicRpcs[0]}</div>
-          </Link>
+            <Link
+              href={`/chain/${chain.chainId}`}
+              className="mt-3 block truncate font-mono text-xs text-muted group-hover:text-text"
+              title={chain.publicRpcs[0]}
+            >
+              {chain.publicRpcs[0]}
+            </Link>
+          </div>
         ))}
       </div>
     </section>
@@ -331,15 +380,15 @@ function ChainTable({
 }) {
   if (chains.length === 0) {
     return (
-      <section className="rounded-2xl border border-border bg-card p-10 text-center">
+      <section className="rounded-2xl border border-border bg-card p-10 text-center shadow-card">
         <div className="text-sm text-muted">No chains match this filter.</div>
       </section>
     );
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="hidden grid-cols-[1.8fr_0.6fr_0.7fr_0.9fr_1.5fr_0.6fr] gap-4 border-b border-border px-5 py-3 text-[0.7rem] uppercase tracking-wider text-muted md:grid">
+    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+      <div className="hidden grid-cols-[1.8fr_0.6fr_0.7fr_0.9fr_1.5fr_0.6fr] gap-4 border-b border-border bg-surface px-5 py-3 text-[0.7rem] font-semibold uppercase tracking-wider text-muted md:grid">
         <div>Chain</div>
         <div>Chain ID</div>
         <div>RPC count</div>
@@ -377,29 +426,43 @@ function ChainRow({
   const initial = chain.name.charAt(0).toUpperCase();
 
   return (
-    <li className="grid grid-cols-1 gap-3 px-5 py-4 md:grid-cols-[1.8fr_0.6fr_0.7fr_0.9fr_1.5fr_0.6fr] md:items-center md:gap-4">
+    <li className="grid grid-cols-1 gap-3 px-5 py-4 transition hover:bg-surface/60 md:grid-cols-[1.8fr_0.6fr_0.7fr_0.9fr_1.5fr_0.6fr] md:items-center md:gap-4">
       <div className="flex items-center gap-3">
         <div
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-bg text-sm font-semibold ${countStyle.text}`}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-sm font-semibold ${countStyle.text}`}
         >
           {initial}
         </div>
         <div className="min-w-0">
-          <Link
-            href={`/chain/${chain.chainId}`}
-            className="block truncate font-medium text-text hover:text-critical"
-          >
-            {chain.name}
-          </Link>
-          <div className="flex items-center gap-2 text-xs text-muted">
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/chain/${chain.chainId}`}
+              className="truncate font-medium text-text hover:text-accent"
+            >
+              {chain.name}
+            </Link>
+            {chain.infoURL && (
+              <a
+                href={chain.infoURL}
+                target="_blank"
+                rel="noreferrer"
+                title={`Open ${chain.name} website`}
+                aria-label={`Open ${chain.name} website`}
+                className="shrink-0 text-muted hover:text-accent"
+              >
+                <span aria-hidden>↗</span>
+              </a>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
             <span className="truncate">{chain.nativeCurrency.symbol}</span>
             {chain.isNotable && (
-              <span className="rounded-full border border-border bg-bg px-2 py-0.5 text-[0.65rem] uppercase tracking-wider text-muted">
+              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-accent">
                 Notable
               </span>
             )}
             {chain.isTestnet && (
-              <span className="rounded-full border border-border bg-bg px-2 py-0.5 text-[0.65rem] uppercase tracking-wider text-muted">
+              <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[0.65rem] uppercase tracking-wider text-muted">
                 Testnet
               </span>
             )}
@@ -409,7 +472,7 @@ function ChainRow({
 
       <div className="flex items-center md:block">
         <span className="font-mono text-xs text-muted md:hidden">Chain ID · </span>
-        <span className="rounded-md border border-border bg-bg px-2 py-1 font-mono text-xs text-text">
+        <span className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-xs text-text">
           {chain.chainId}
         </span>
       </div>
@@ -434,7 +497,7 @@ function ChainRow({
         <button
           type="button"
           onClick={onToggle}
-          className="w-max rounded-md border border-border bg-bg px-3 py-1.5 text-xs text-text hover:border-critical hover:text-critical"
+          className="w-max rounded-md border border-border bg-card px-3 py-1.5 text-xs text-text shadow-sm transition hover:border-accent hover:text-accent"
         >
           {expanded ? 'Hide RPCs' : `View ${chain.publicRpcCount} RPC${chain.publicRpcCount === 1 ? '' : 's'}`}
         </button>
@@ -448,7 +511,7 @@ function ChainRow({
             {chain.publicRpcs.map((url) => (
               <li
                 key={url}
-                className="truncate rounded-md border border-border bg-bg px-2 py-1 font-mono text-muted"
+                className="truncate rounded-md border border-border bg-surface px-2 py-1 font-mono text-muted"
                 title={url}
               >
                 {url}
@@ -464,7 +527,7 @@ function ChainRow({
             href={explorer.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-bg px-3 py-1.5 text-xs text-muted hover:border-critical hover:text-critical"
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-xs text-muted shadow-sm transition hover:border-accent hover:text-accent"
           >
             Explorer
             <span aria-hidden>↗</span>
@@ -477,9 +540,43 @@ function ChainRow({
   );
 }
 
+function Disclaimer() {
+  return (
+    <section className="mb-8 flex gap-3 rounded-2xl border border-border bg-card p-5 text-sm shadow-card">
+      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-base font-semibold text-accent">
+        i
+      </div>
+      <div className="text-muted">
+        <span className="font-semibold text-text">Data source.</span> RPC Watch reads the public
+        RPC list published by{' '}
+        <a
+          href="https://chainid.network/chains.json"
+          target="_blank"
+          rel="noreferrer"
+          className="font-medium text-accent hover:underline"
+        >
+          chainid.network
+        </a>{' '}
+        (the community-maintained{' '}
+        <a
+          href="https://github.com/ethereum-lists/chains"
+          target="_blank"
+          rel="noreferrer"
+          className="font-medium text-accent hover:underline"
+        >
+          ethereum-lists/chains
+        </a>{' '}
+        registry behind chainlist.org). That dataset is our <em>only</em> source of information.
+        It can lag behind reality or miss endpoints a project hasn&apos;t registered — always
+        verify with the project directly before trusting an endpoint with assets.
+      </div>
+    </section>
+  );
+}
+
 function Footer() {
   return (
-    <footer className="mt-16 border-t border-border bg-card/60">
+    <footer className="mt-16 border-t border-border bg-card">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-6 py-8 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
         <div>
           Data source:{' '}
@@ -487,15 +584,15 @@ function Footer() {
             href="https://chainid.network/chains.json"
             target="_blank"
             rel="noreferrer"
-            className="text-text hover:text-critical"
+            className="text-text hover:text-accent"
           >
             chainid.network
           </a>{' '}
           (ethereum-lists/chains). Updated every hour.
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <a
-            href="https://github.com/ethereum-lists/chains"
+            href="https://github.com/Heinrich-Kemler/RPCWatch"
             target="_blank"
             rel="noreferrer"
             className="hover:text-text"
@@ -503,6 +600,9 @@ function Footer() {
             Open source
           </a>
           <span className="text-text">Built by Weaving Web 3</span>
+          <span className="font-medium text-critical">
+            Built by crypto Goblin &amp; Shai — best frens
+          </span>
         </div>
       </div>
     </footer>
