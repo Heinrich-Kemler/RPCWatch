@@ -4,15 +4,13 @@ import { getCachedChainHealth } from '../../../../../lib/health.server';
 type RouteContext = {
   params: Promise<{
     chainId: string;
-  }> | {
-    chainId: string;
-  };
+  }>;
 };
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(_request: Request, context: RouteContext) {
-  const { chainId } = await Promise.resolve(context.params);
+  const { chainId } = await context.params;
   const parsedChainId = Number.parseInt(chainId, 10);
 
   if (!Number.isInteger(parsedChainId)) {
