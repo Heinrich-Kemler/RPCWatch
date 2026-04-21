@@ -362,6 +362,11 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         operator: 'Koios',
         tracking: 'none',
       },
+      {
+        url: 'https://aggregator.release-mainnet.api.mithril.network/aggregator/epoch-settings',
+        operator: 'Mithril (IOG)',
+        tracking: 'none',
+      },
     ],
   },
   {
@@ -381,7 +386,17 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
       },
       {
         url: 'https://mainnet-api.algonode.cloud/v2/status',
-        operator: 'Nodely (algonode alias)',
+        operator: 'Nodely',
+        tracking: 'limited',
+      },
+      {
+        url: 'https://mainnet-idx.4160.nodely.dev/v2/transactions?limit=1',
+        operator: 'Nodely',
+        tracking: 'limited',
+      },
+      {
+        url: 'https://mainnet-idx.algonode.cloud/v2/transactions?limit=1',
+        operator: 'Nodely',
         tracking: 'limited',
       },
     ],

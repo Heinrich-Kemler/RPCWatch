@@ -85,6 +85,7 @@ const APEX_PROVIDERS: Record<string, ProviderDef> = {
   'nodely.io': { name: 'Nodely', id: 'nodely', kind: 'public-rpc-aggregator' },
   'algonode.cloud': { name: 'Nodely (algonode)', id: 'nodely', kind: 'public-rpc-aggregator' },
   'koios.rest': { name: 'Koios', id: 'koios', kind: 'public-rpc-aggregator' },
+  'mithril.network': { name: 'Mithril (IOG)', id: 'mithril', kind: 'foundation' },
   'numia.xyz': { name: 'Numia', id: 'numia', kind: 'public-rpc-aggregator' },
   'pops.one': { name: 'P-OPS', id: 'pops', kind: 'public-rpc-aggregator' },
   'blockchair.com': { name: 'Blockchair', id: 'blockchair', kind: 'public-rpc-aggregator' },
