@@ -204,7 +204,13 @@ function Hero({
         RPC <span className="text-critical">Watch</span>
       </h1>
       <p className="mt-4 max-w-2xl text-lg text-muted">
-        Which blockchains are one outage away from going dark?
+        Which blockchains are one outage away from going dark?{' '}
+        <Link
+          href="/providers"
+          className="whitespace-nowrap font-semibold text-accent hover:underline"
+        >
+          See who depends on whom →
+        </Link>
       </p>
 
       <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -450,16 +456,27 @@ function TvlLeaderboard({ chains }: { chains: ProcessedChain[] }) {
           return (
             <li key={chain.chainId} className="grid grid-cols-[2.4rem_1fr_auto] items-center gap-3 px-6 py-3 text-sm">
               <span className="font-mono text-xs text-muted">#{index + 1}</span>
-              <Link
-                href={`/chain/${chain.chainId}`}
-                className="min-w-0 hover:text-critical"
-              >
-                <span className="block truncate font-semibold text-text">{chain.name}</span>
+              <div className="min-w-0">
+                <Link
+                  href={`/chain/${chain.chainId}`}
+                  className="block truncate font-semibold text-text hover:text-critical"
+                >
+                  {chain.name}
+                </Link>
                 <span className="block truncate text-xs text-muted">
                   Sole provider:{' '}
-                  <span className="font-medium text-text">{provider?.name ?? '—'}</span>
+                  {provider ? (
+                    <Link
+                      href={`/provider/${encodeURIComponent(provider.id)}`}
+                      className="font-medium text-text hover:underline"
+                    >
+                      {provider.name}
+                    </Link>
+                  ) : (
+                    <span className="font-medium text-text">—</span>
+                  )}
                 </span>
-              </Link>
+              </div>
               <span className="whitespace-nowrap rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-critical">
                 {formatCompactUsd(chain.tvlUsd ?? 0)}
               </span>
@@ -592,12 +609,13 @@ function ChainRow({
               </span>
             )}
             {allRpcsSameProvider && soleProvider && (
-              <span
-                className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-critical"
+              <Link
+                href={`/provider/${encodeURIComponent(soleProvider.id)}`}
+                className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-critical hover:underline"
                 title={`All ${chain.publicRpcCount} public RPCs resolve to ${soleProvider.name}`}
               >
                 All via {soleProvider.name}
-              </span>
+              </Link>
             )}
           </div>
         </div>

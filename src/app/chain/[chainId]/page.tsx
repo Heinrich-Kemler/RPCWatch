@@ -396,7 +396,12 @@ function ProviderCard({ group, details }: { group: ProviderGroup; details: RpcEn
           >
             {group.verified ? 'Provider' : 'Apex'}
           </span>
-          <span className="text-sm font-semibold text-text">{group.name}</span>
+          <Link
+            href={`/provider/${encodeURIComponent(group.id)}`}
+            className="text-sm font-semibold text-text hover:text-accent hover:underline"
+          >
+            {group.name}
+          </Link>
           <span className="text-xs text-muted">
             · {group.urls.length} URL{group.urls.length === 1 ? '' : 's'}
           </span>
