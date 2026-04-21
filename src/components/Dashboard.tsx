@@ -706,52 +706,198 @@ function Methodology() {
           <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-accent">
             ?
           </span>
-          Methodology — how we classify chains
+          Methodology — how we classify chains, and what we can and can&apos;t see
         </span>
         <span className="text-xs text-muted transition group-open:rotate-180" aria-hidden>
           ▾
         </span>
       </summary>
-      <div className="grid gap-4 border-t border-border px-5 py-4 text-sm text-muted sm:grid-cols-2">
-        <div>
-          <div className="font-semibold text-text">Providers, not URLs</div>
-          <p className="mt-1">
-            We count distinct <span className="font-semibold text-text">providers</span> — not URLs.
-            A chain listing <code className="rounded bg-surface px-1">rpc.orderly.network</code>{' '}
-            and <code className="rounded bg-surface px-1">…conduit.xyz</code> looks like two until
-            you notice Conduit operates both. Our provider map collapses URLs to their real
-            operator so redundancy isn&apos;t over-counted. Template URLs with{' '}
-            <code className="rounded bg-surface px-1">{'${VARIABLE}'}</code> are dropped — they
-            require an API key and aren&apos;t usable by a stranger.
+      <div className="space-y-5 border-t border-border px-5 py-5 text-sm text-muted">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+          <div className="font-semibold text-amber-900">
+            &ldquo;1 public RPC&rdquo; means <em>1 listed in our sources</em>, not{' '}
+            <em>1 that exists</em>.
+          </div>
+          <p className="mt-1 text-amber-900/80">
+            We&apos;re bounded by what the community registries publish. A project can run five
+            public RPCs and only register one — we&apos;ll report one. A project can run zero
+            public RPCs and ship an API-key-only endpoint — we&apos;ll show &ldquo;no public
+            RPC.&rdquo; If you know a chain has more endpoints than we show, the fix is to open
+            a PR against the source registry (links below) — it&apos;ll flow through to us on the
+            next hourly refresh.
           </p>
         </div>
-        <div>
-          <div className="font-semibold text-text">Risk tiers</div>
-          <p className="mt-1">
-            <span className="font-semibold text-critical">Critical</span> = 1 provider ·{' '}
-            <span className="font-semibold text-warning">At risk</span> = 2–3 ·{' '}
-            <span className="font-semibold text-safe">Safe</span> = 4+. Risk is about redundancy,
-            not endorsement — a safe chain can still have a bad operator in the list.
-          </p>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <div className="font-semibold text-text">Where the data comes from</div>
+            <ul className="mt-1 list-disc space-y-1 pl-4">
+              <li>
+                <a
+                  href="https://chainlist.org/rpcs.json"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  chainlist.org/rpcs.json
+                </a>{' '}
+                — per-RPC privacy &amp; open-source flags, TVL via DefiLlama
+              </li>
+              <li>
+                <a
+                  href="https://chainid.network/chains.json"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  chainid.network/chains.json
+                </a>{' '}
+                (the{' '}
+                <a
+                  href="https://github.com/ethereum-lists/chains"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  ethereum-lists/chains
+                </a>{' '}
+                registry)
+              </li>
+              <li>
+                <a
+                  href="https://api.llama.fi/v2/chains"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  DefiLlama /v2/chains
+                </a>{' '}
+                — TVL for ~440 chains incl. non-EVM
+              </li>
+              <li>
+                A hand-maintained seed file for non-EVM L1s (Solana, Sui, Aptos, Near, TON, Tron,
+                Stacks). Every URL in that file has been probed for anonymous access.
+              </li>
+            </ul>
+          </div>
+          <div>
+            <div className="font-semibold text-text">Providers, not URLs</div>
+            <p className="mt-1">
+              We count distinct <span className="font-semibold text-text">providers</span>, not
+              URLs. A chain listing{' '}
+              <code className="rounded bg-surface px-1">rpc.orderly.network</code> and{' '}
+              <code className="rounded bg-surface px-1">…conduit.xyz</code> looks like two until
+              you notice Conduit operates both. Our hostname → provider map collapses URLs to
+              their real operator (dRPC, PublicNode, Ankr, Conduit, Caldera, Alchemy, Infura,
+              and more). URLs whose apex isn&apos;t in the map are grouped by apex and marked
+              &ldquo;Apex&rdquo; — conservative, not verified.
+            </p>
+          </div>
+          <div>
+            <div className="font-semibold text-text">What we strip out</div>
+            <ul className="mt-1 list-disc space-y-1 pl-4">
+              <li>
+                URLs containing{' '}
+                <code className="rounded bg-surface px-1">{'${VARIABLE}'}</code> (require an API
+                key, not usable anonymously)
+              </li>
+              <li>Deprecated chains (Ropsten, Rinkeby, Goerli, Kovan; plus any name with &ldquo;deprecated&rdquo;)</li>
+              <li>Testnets (hidden by default; toggle to include)</li>
+            </ul>
+          </div>
+          <div>
+            <div className="font-semibold text-text">Risk tiers</div>
+            <p className="mt-1">
+              <span className="font-semibold text-critical">Critical</span> = 1 provider ·{' '}
+              <span className="font-semibold text-warning">At risk</span> = 2–3 ·{' '}
+              <span className="font-semibold text-safe">Safe</span> = 4+. Risk is about
+              redundancy, not endorsement — a safe chain can still have a bad operator in the
+              list.
+            </p>
+          </div>
+          <div>
+            <div className="font-semibold text-text">TVL &amp; &ldquo;Active chains&rdquo;</div>
+            <p className="mt-1">
+              All registered chains are shown by default. The{' '}
+              <span className="font-semibold text-safe">TVL</span> badge surfaces when DefiLlama
+              reports ≥ $1M (mainnet only — we null TVL on testnets, which DefiLlama otherwise
+              replicates from their parent mainnet). &ldquo;Active chains only&rdquo; trims to
+              chains with ≥ $1M TVL or on the notable-name list.
+            </p>
+          </div>
+          <div>
+            <div className="font-semibold text-text">Known coverage gaps</div>
+            <ul className="mt-1 list-disc space-y-1 pl-4">
+              <li>
+                Chains with RPCs run through non-registered infra providers (QuickNode behind a
+                branded domain, for example) can&apos;t be distinguished from a chain running
+                its own RPC.
+              </li>
+              <li>
+                Non-EVM ecosystems — Aptos, TON, Stacks — have genuinely thin anonymous public
+                access because most partner providers gate behind sign-up. That single-provider
+                exposure is real, not an artifact of missing entries.
+              </li>
+              <li>
+                Our hostname map is curated — unknown apexes are treated as a single
+                &ldquo;Apex&rdquo; provider. Two separate projects hosting their own infra on
+                the same registrar would wrongly be collapsed if we didn&apos;t treat unknown
+                apexes conservatively.
+              </li>
+            </ul>
+          </div>
         </div>
-        <div>
-          <div className="font-semibold text-text">TVL &amp; &ldquo;Active chains&rdquo;</div>
-          <p className="mt-1">
-            Every chain in both source registries is shown by default. For the ~12% of chains
-            that DefiLlama tracks, we surface a <span className="font-semibold text-safe">TVL</span>{' '}
-            badge when value ≥ $1M. Flip the &ldquo;Active chains only&rdquo; toggle to trim the
-            list to chains with ≥ $1M TVL or on our notable-name pin list — useful when you want
-            to focus on chains that actually hold assets.
-          </p>
-        </div>
-        <div>
-          <div className="font-semibold text-text">Sort order</div>
-          <p className="mt-1">
-            Notable names first, then by TVL descending, then by RPC count. On the Safe tab the
-            most-covered chains come first; on Critical and At Risk the highest-TVL chains
-            come first — because a single-RPC chain with $1B of assets at stake is more
-            interesting than one with $0.
-          </p>
+
+        <div className="rounded-xl border border-border bg-surface p-4 text-sm">
+          <div className="font-semibold text-text">See something wrong? Help fix it.</div>
+          <ul className="mt-1 list-disc space-y-1 pl-4">
+            <li>
+              Missing RPC on an EVM chain: PR to{' '}
+              <a
+                href="https://github.com/ethereum-lists/chains"
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent hover:underline"
+              >
+                ethereum-lists/chains
+              </a>{' '}
+              or{' '}
+              <a
+                href="https://github.com/DefiLlama/chainlist"
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent hover:underline"
+              >
+                DefiLlama/chainlist
+              </a>
+              .
+            </li>
+            <li>
+              Missing RPC on a non-EVM chain we seed manually: PR to{' '}
+              <a
+                href="https://github.com/Heinrich-Kemler/RPCWatch/blob/main/src/lib/nonEvmChains.ts"
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent hover:underline"
+              >
+                src/lib/nonEvmChains.ts
+              </a>{' '}
+              — include the URL you verified works anonymously.
+            </li>
+            <li>
+              Provider we don&apos;t recognise (URLs incorrectly grouped as &ldquo;Apex&rdquo;): PR
+              to{' '}
+              <a
+                href="https://github.com/Heinrich-Kemler/RPCWatch/blob/main/src/lib/providers.ts"
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent hover:underline"
+              >
+                src/lib/providers.ts
+              </a>
+              .
+            </li>
+          </ul>
         </div>
       </div>
     </details>

@@ -2,16 +2,26 @@
  * Non-EVM single-provider L1 seed table.
  *
  * Neither chainid.network nor chainlist.org cover non-EVM ecosystems in
- * detail, yet several household-name L1s run on a single foundation- or
- * company-operated public endpoint. Hard-coding this seed list means
- * they show up in the dashboard at their real risk level instead of
- * being invisible.
+ * depth, so we hard-code the chains and the public endpoints we have
+ * manually verified respond anonymously (no API key, no sign-up).
  *
- * Review this list roughly once a quarter.
+ * Verification notes (2026-04):
+ *   - Endpoints listed here were probed with a standard chain-specific
+ *     request (Solana getHealth, Sui sui_getChainIdentifier, Near status,
+ *     TON getMasterchainInfo, Aptos GET /v1, Stacks GET /extended/v1/info).
+ *   - Endpoints that returned 4xx for anonymous clients (e.g. Ankr Tron,
+ *     BlastAPI Sui, dRPC Solana free-tier) are NOT listed — they require
+ *     a key in practice.
+ *   - Aptos, TON, and Stacks each have genuinely thin anonymous coverage:
+ *     the chain foundations dominate, and most partner providers gate
+ *     behind sign-up. That single-provider exposure is real, not an
+ *     artifact of missing entries.
  *
- * chainId convention for non-EVM entries: we use a synthetic negative
- * number so it never collides with real EVM chainIds. `caip2` is the
- * authoritative identifier (https://chainagnostic.org/CAIPs/caip-2).
+ * Review quarterly. When adding a provider, probe first, verify anonymous
+ * access, and only then add it here.
+ *
+ * chainId convention: synthetic negative numbers so no collision with
+ * real EVM chainIds. `caip2` is the authoritative identifier.
  */
 
 export type NonEvmChainSeed = {
@@ -29,9 +39,8 @@ export type NonEvmChainSeed = {
     isOpenSource?: boolean;
   }>;
   /**
-   * Hint used by the TVL join to look up DefiLlama. DefiLlama keys its
-   * chains on `gecko_id` and `name`; we map to the DefiLlama display
-   * name so resolution works.
+   * DefiLlama display name for the TVL join. DefiLlama keys chains on
+   * `gecko_id` and `name`; we map to the name so resolution works.
    */
   defillamaName: string;
 };
@@ -58,8 +67,8 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         tracking: 'none',
       },
       {
-        url: 'https://solana.drpc.org',
-        operator: 'dRPC',
+        url: 'https://api.blockeden.xyz/solana/67nCBdZQSH9z3YqDDjdm',
+        operator: 'BlockEden',
         tracking: 'limited',
       },
     ],
@@ -79,6 +88,11 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         operator: 'Mysten Labs',
         tracking: 'unspecified',
       },
+      {
+        url: 'https://sui-rpc.publicnode.com',
+        operator: 'PublicNode',
+        tracking: 'none',
+      },
     ],
   },
   {
@@ -93,6 +107,11 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
     rpcs: [
       {
         url: 'https://fullnode.mainnet.aptoslabs.com/v1',
+        operator: 'Aptos Foundation',
+        tracking: 'unspecified',
+      },
+      {
+        url: 'https://api.mainnet.aptoslabs.com/v1',
         operator: 'Aptos Foundation',
         tracking: 'unspecified',
       },
@@ -112,6 +131,21 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         url: 'https://rpc.mainnet.near.org',
         operator: 'Near Foundation',
         tracking: 'unspecified',
+      },
+      {
+        url: 'https://rpc.near.org',
+        operator: 'Near Foundation',
+        tracking: 'unspecified',
+      },
+      {
+        url: 'https://near.lava.build',
+        operator: 'Lava Network',
+        tracking: 'yes',
+      },
+      {
+        url: 'https://near.drpc.org',
+        operator: 'dRPC',
+        tracking: 'none',
       },
     ],
   },
@@ -146,6 +180,11 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         url: 'https://api.trongrid.io',
         operator: 'TronGrid',
         tracking: 'unspecified',
+      },
+      {
+        url: 'https://tron-rpc.publicnode.com',
+        operator: 'PublicNode',
+        tracking: 'none',
       },
     ],
   },

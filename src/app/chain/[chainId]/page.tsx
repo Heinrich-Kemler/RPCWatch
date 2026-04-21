@@ -151,6 +151,8 @@ export default async function ChainDetailPage({ params }: PageProps) {
           </div>
         </header>
 
+        <KnowBetter chain={chain} />
+
         <DependencyBlock chain={chain} />
 
         <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-card">
@@ -248,6 +250,76 @@ export default async function ChainDetailPage({ params }: PageProps) {
         </section>
       </div>
     </main>
+  );
+}
+
+function KnowBetter({ chain }: { chain: ProcessedChain }) {
+  if (chain.riskLevel !== 'critical' && chain.riskLevel !== 'at-risk') return null;
+
+  const evmPrFlow = !chain.isNonEvm;
+  const nonEvmPrFlow = chain.isNonEvm;
+
+  return (
+    <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm">
+      <div className="font-semibold text-amber-900">Know of more public RPCs for this chain?</div>
+      <p className="mt-1 text-amber-900/85">
+        This page reflects what the community registries currently list — nothing more. If you
+        know of a working public endpoint that isn&apos;t here, please add it upstream so every
+        tool (not just RPC Watch) gets the fix.
+      </p>
+      <ul className="mt-3 list-disc space-y-1 pl-5 text-amber-900/85">
+        {evmPrFlow && (
+          <li>
+            Open a PR to{' '}
+            <a
+              href="https://github.com/ethereum-lists/chains"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-amber-900 underline hover:text-critical"
+            >
+              ethereum-lists/chains
+            </a>{' '}
+            (the source behind chainid.network) and{' '}
+            <a
+              href="https://github.com/DefiLlama/chainlist"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-amber-900 underline hover:text-critical"
+            >
+              DefiLlama/chainlist
+            </a>{' '}
+            (the source behind chainlist.org).
+          </li>
+        )}
+        {nonEvmPrFlow && (
+          <li>
+            Non-EVM chains are hand-seeded in{' '}
+            <a
+              href="https://github.com/Heinrich-Kemler/RPCWatch/blob/main/src/lib/nonEvmChains.ts"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-amber-900 underline hover:text-critical"
+            >
+              src/lib/nonEvmChains.ts
+            </a>{' '}
+            — add the endpoint and the operator name after verifying anonymous access.
+          </li>
+        )}
+        <li>
+          Our{' '}
+          <a
+            href="https://github.com/Heinrich-Kemler/RPCWatch/blob/main/src/lib/providers.ts"
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-amber-900 underline hover:text-critical"
+          >
+            hostname → provider map
+          </a>{' '}
+          decides when two URLs count as the same operator. Missing mappings are tagged
+          &ldquo;Apex&rdquo; — if one looks wrong, open a PR.
+        </li>
+      </ul>
+    </section>
   );
 }
 
