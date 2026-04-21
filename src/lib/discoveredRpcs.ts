@@ -82,6 +82,64 @@ export const DISCOVERED_RPCS: DiscoveredRpc[] = [
     url: 'https://0g-rpc.publicnode.com',
     verifiedAt: '2026-04-21',
   },
+
+  // Plasma Mainnet — probe added two operators.
+  {
+    chainId: 9745,
+    url: 'https://plasma.gateway.tenderly.co',
+    verifiedAt: '2026-04-21',
+  },
+  {
+    chainId: 9745,
+    url: 'https://plasma-mainnet.gateway.tatum.io',
+    verifiedAt: '2026-04-21',
+    note: 'Tatum — signup nominally, but anonymous works today',
+  },
+
+  // Rootstock Mainnet — Tatum serves anonymously.
+  {
+    chainId: 30,
+    url: 'https://rootstock-mainnet.gateway.tatum.io',
+    verifiedAt: '2026-04-21',
+  },
+
+  // MegaETH Mainnet — two new operators.
+  {
+    chainId: 4326,
+    url: 'https://1rpc.io/megaeth',
+    verifiedAt: '2026-04-21',
+  },
+  {
+    chainId: 4326,
+    url: 'https://megaeth.gateway.tenderly.co',
+    verifiedAt: '2026-04-21',
+  },
+
+  // Soneium — two new operators (PublicNode + Tenderly).
+  {
+    chainId: 1868,
+    url: 'https://soneium-rpc.publicnode.com',
+    verifiedAt: '2026-04-21',
+  },
+  {
+    chainId: 1868,
+    url: 'https://soneium.gateway.tenderly.co',
+    verifiedAt: '2026-04-21',
+  },
+
+  // ApeChain — Tenderly serves anonymously.
+  {
+    chainId: 33139,
+    url: 'https://apechain.gateway.tenderly.co',
+    verifiedAt: '2026-04-21',
+  },
+
+  // TAC Mainnet — dRPC serves.
+  {
+    chainId: 239,
+    url: 'https://tac.drpc.org',
+    verifiedAt: '2026-04-21',
+  },
 ];
 
 export function discoveredRpcsForChain(chainId: number): DiscoveredRpc[] {
