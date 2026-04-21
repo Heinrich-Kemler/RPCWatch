@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 
 import type { ProcessedChain } from '../lib/chains';
 import { SIGNIFICANT_TVL_USD } from '../lib/chains';
-import { formatCompactUsd } from '../lib/format';
+import { formatCompactUsd, safeExternalHref } from '../lib/format';
 import { riskPalette, rpcCountPalette } from '../lib/risk';
 import type { SourceFetchSummary } from '../lib/sources';
 
@@ -463,18 +463,21 @@ function CriticalCallout({
                 )}
               </Link>
               <div className="flex shrink-0 items-center gap-2 text-xs text-muted">
-                {chain.infoURL && (
-                  <a
-                    href={chain.infoURL}
-                    target="_blank"
-                    rel="noreferrer"
-                    title={`Open ${chain.name} website`}
-                    aria-label={`Open ${chain.name} website`}
-                    className="hover:text-critical"
-                  >
-                    <span aria-hidden>↗</span>
-                  </a>
-                )}
+                {(() => {
+                  const safe = safeExternalHref(chain.infoURL);
+                  return safe ? (
+                    <a
+                      href={safe}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`Open ${chain.name} website`}
+                      aria-label={`Open ${chain.name} website`}
+                      className="hover:text-critical"
+                    >
+                      <span aria-hidden>↗</span>
+                    </a>
+                  ) : null;
+                })()}
                 <span>#{chain.chainId}</span>
               </div>
             </div>
@@ -625,18 +628,21 @@ function ChainRow({
             >
               {chain.name}
             </Link>
-            {chain.infoURL && (
-              <a
-                href={chain.infoURL}
-                target="_blank"
-                rel="noreferrer"
-                title={`Open ${chain.name} website`}
-                aria-label={`Open ${chain.name} website`}
-                className="shrink-0 text-muted hover:text-accent"
-              >
-                <span aria-hidden>↗</span>
-              </a>
-            )}
+            {(() => {
+              const safe = safeExternalHref(chain.infoURL);
+              return safe ? (
+                <a
+                  href={safe}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Open ${chain.name} website`}
+                  aria-label={`Open ${chain.name} website`}
+                  className="shrink-0 text-muted hover:text-accent"
+                >
+                  <span aria-hidden>↗</span>
+                </a>
+              ) : null;
+            })()}
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
             <span className="truncate">{chain.nativeCurrency.symbol}</span>
@@ -741,19 +747,22 @@ function ChainRow({
       </div>
 
       <div className="flex md:justify-end">
-        {explorer ? (
-          <a
-            href={explorer.url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-xs text-muted shadow-sm transition hover:border-accent hover:text-accent"
-          >
-            Explorer
-            <span aria-hidden>↗</span>
-          </a>
-        ) : (
-          <span className="text-xs text-muted">—</span>
-        )}
+        {(() => {
+          const safe = explorer ? safeExternalHref(explorer.url) : null;
+          return safe ? (
+            <a
+              href={safe}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-xs text-muted shadow-sm transition hover:border-accent hover:text-accent"
+            >
+              Explorer
+              <span aria-hidden>↗</span>
+            </a>
+          ) : (
+            <span className="text-xs text-muted">—</span>
+          );
+        })()}
       </div>
     </li>
   );

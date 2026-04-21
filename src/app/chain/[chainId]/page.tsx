@@ -7,7 +7,7 @@ import ShareButtons from '../../../components/ShareButtons';
 import type { ProcessedChain, ProviderGroup, RpcEndpoint } from '../../../lib/chains';
 import { SIGNIFICANT_TVL_USD } from '../../../lib/chains';
 import { getCachedChainById } from '../../../lib/chains.server';
-import { describeTracking, formatCompactUsd } from '../../../lib/format';
+import { describeTracking, formatCompactUsd, safeExternalHref } from '../../../lib/format';
 import { riskPalette, rpcCountPalette } from '../../../lib/risk';
 
 export const revalidate = 3600;
@@ -132,17 +132,20 @@ export default async function ChainDetailPage({ params }: PageProps) {
           <WhyThisMatters chain={chain} soleProvider={soleProvider} />
 
           <div className="mt-6 flex flex-wrap items-center gap-2">
-            {chain.infoURL && (
-              <a
-                href={chain.infoURL}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-md border border-accent/20 bg-blue-50 px-3 py-2 text-xs font-semibold text-accent transition hover:bg-blue-100"
-              >
-                Visit project website
-                <span aria-hidden>↗</span>
-              </a>
-            )}
+            {(() => {
+              const safeInfo = safeExternalHref(chain.infoURL);
+              return safeInfo ? (
+                <a
+                  href={safeInfo}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-md border border-accent/20 bg-blue-50 px-3 py-2 text-xs font-semibold text-accent transition hover:bg-blue-100"
+                >
+                  Visit project website
+                  <span aria-hidden>↗</span>
+                </a>
+              ) : null;
+            })()}
             <ShareButtons
               chainName={chain.name}
               publicRpcCount={chain.publicRpcCount}
@@ -187,25 +190,34 @@ export default async function ChainDetailPage({ params }: PageProps) {
           <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-card">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Explorers</h2>
             <ul className="mt-4 space-y-2">
-              {chain.explorers.map((explorer) => (
-                <li
-                  key={explorer.url}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-sm"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-text">{explorer.name ?? explorer.url}</div>
-                    <div className="truncate text-xs text-muted">{explorer.url}</div>
-                  </div>
-                  <a
-                    href={explorer.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-md border border-border bg-card px-3 py-1 text-xs text-muted shadow-sm transition hover:border-accent hover:text-accent"
+              {chain.explorers.map((explorer) => {
+                const safe = safeExternalHref(explorer.url);
+                return (
+                  <li
+                    key={explorer.url}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-sm"
                   >
-                    Open ↗
-                  </a>
-                </li>
-              ))}
+                    <div className="min-w-0">
+                      <div className="truncate text-text">{explorer.name ?? explorer.url}</div>
+                      <div className="truncate text-xs text-muted">{explorer.url}</div>
+                    </div>
+                    {safe ? (
+                      <a
+                        href={safe}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-md border border-border bg-card px-3 py-1 text-xs text-muted shadow-sm transition hover:border-accent hover:text-accent"
+                      >
+                        Open ↗
+                      </a>
+                    ) : (
+                      <span className="rounded-md border border-border bg-surface px-3 py-1 text-xs text-muted">
+                        Link withheld
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </section>
         )}

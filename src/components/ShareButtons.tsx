@@ -45,7 +45,7 @@ export default function ShareButtons({ chainName, publicRpcCount, path }: ShareB
       <a
         href={tweetHref}
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
         className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs text-text transition hover:border-critical hover:text-critical"
       >
         Share on X
