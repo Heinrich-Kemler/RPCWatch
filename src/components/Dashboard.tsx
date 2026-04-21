@@ -899,14 +899,26 @@ function Methodology() {
             <div className="font-semibold text-text">Known coverage gaps</div>
             <ul className="mt-1 list-disc space-y-1 pl-4">
               <li>
-                Chains with RPCs run through non-registered infra providers (QuickNode behind a
-                branded domain, for example) can&apos;t be distinguished from a chain running
-                its own RPC.
+                <span className="font-medium text-text">Key-gated doesn&apos;t count.</span> RPC
+                Watch measures <em>anonymous</em> public RPCs — endpoints a stranger on the
+                internet can hit without signing up. QuickNode, Chainstack, Ankr (paid tier),
+                NOWNodes, Helius (standard tier), Alchemy (dedicated endpoints) all offer RPC
+                service for many chains but gate behind a mandatory API key. We don&apos;t
+                credit those as &ldquo;public providers&rdquo; because the moment your wallet
+                needs an account to read the chain, the single-point-of-failure story hasn&apos;t
+                gone away — it&apos;s just moved to the login screen.
               </li>
               <li>
-                Non-EVM ecosystems — Aptos, TON, Stacks — have genuinely thin anonymous public
-                access because most partner providers gate behind sign-up. That single-provider
-                exposure is real, not an artifact of missing entries.
+                Chains whose RPCs route through a third-party infra provider behind a branded
+                domain (a rollup running on Conduit but exposing only{' '}
+                <code className="rounded bg-surface px-1">rpc.&lt;chain&gt;.com</code>)
+                can&apos;t be distinguished from a chain running its own RPC — unless the brand
+                resolves to a known provider we&apos;ve mapped.
+              </li>
+              <li>
+                Non-EVM ecosystems — Aptos, TON, Stacks — have genuinely thin <em>anonymous</em>
+                public access because most partner providers gate behind sign-up. That
+                single-provider exposure is real, not an artifact of missing entries.
               </li>
               <li>
                 Our hostname map is curated — unknown apexes are treated as a single

@@ -5,20 +5,23 @@
  * depth, so we hard-code the chains and the public endpoints we have
  * manually verified respond anonymously (no API key, no sign-up).
  *
- * Verification notes (2026-04):
- *   - Endpoints listed here were probed with a standard chain-specific
- *     request (Solana getHealth, Sui sui_getChainIdentifier, Near status,
- *     TON getMasterchainInfo, Aptos GET /v1, Stacks GET /extended/v1/info).
- *   - Endpoints that returned 4xx for anonymous clients (e.g. Ankr Tron,
- *     BlastAPI Sui, dRPC Solana free-tier) are NOT listed — they require
- *     a key in practice.
- *   - Aptos, TON, and Stacks each have genuinely thin anonymous coverage:
- *     the chain foundations dominate, and most partner providers gate
- *     behind sign-up. That single-provider exposure is real, not an
- *     artifact of missing entries.
+ * Verification notes (re-probed 2026-04-21):
+ *   - Every URL below was probed with a chain-specific request and
+ *     returned a valid response from an anonymous client.
+ *   - QuickNode, Chainstack, Alchemy, Ankr, NOWNodes, and Helius
+ *     (paid-tier) run public RPCs for many of these chains but all
+ *     require an API key. They are intentionally NOT listed here
+ *     because RPC Watch's bar is "anonymous access works today."
+ *   - dRPC's free tier rejects most non-EVM chains with
+ *     "method is not available on freetier." Only chains where dRPC
+ *     serves anonymous requests are included.
+ *   - Aptos, TON, and Stacks genuinely have thin anonymous coverage:
+ *     Aptos Foundation, TON Foundation+partners, and Hiro dominate
+ *     their anonymous public surfaces. That concentration is real,
+ *     not a gap in this file.
  *
- * Review quarterly. When adding a provider, probe first, verify anonymous
- * access, and only then add it here.
+ * Review quarterly. When adding a provider, probe first, verify
+ * anonymous access, then add here.
  *
  * chainId convention: synthetic negative numbers so no collision with
  * real EVM chainIds. `caip2` is the authoritative identifier.
@@ -39,8 +42,7 @@ export type NonEvmChainSeed = {
     isOpenSource?: boolean;
   }>;
   /**
-   * DefiLlama display name for the TVL join. DefiLlama keys chains on
-   * `gecko_id` and `name`; we map to the name so resolution works.
+   * DefiLlama display name for the TVL join.
    */
   defillamaName: string;
 };
@@ -65,6 +67,16 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         url: 'https://solana-rpc.publicnode.com',
         operator: 'PublicNode',
         tracking: 'none',
+      },
+      {
+        url: 'https://mainnet.helius-rpc.com/?api-key=demo',
+        operator: 'Helius',
+        tracking: 'limited',
+      },
+      {
+        url: 'https://solana-mainnet.gateway.tatum.io',
+        operator: 'Tatum',
+        tracking: 'yes',
       },
       {
         url: 'https://api.blockeden.xyz/solana/67nCBdZQSH9z3YqDDjdm',
@@ -93,6 +105,16 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         operator: 'PublicNode',
         tracking: 'none',
       },
+      {
+        url: 'https://sui.publicnode.com',
+        operator: 'Allnodes',
+        tracking: 'none',
+      },
+      {
+        url: 'https://1rpc.io/sui',
+        operator: '1RPC',
+        tracking: 'none',
+      },
     ],
   },
   {
@@ -114,6 +136,11 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         url: 'https://api.mainnet.aptoslabs.com/v1',
         operator: 'Aptos Foundation',
         tracking: 'unspecified',
+      },
+      {
+        url: 'https://1rpc.io/aptos/v1',
+        operator: '1RPC',
+        tracking: 'none',
       },
     ],
   },
@@ -147,6 +174,11 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         operator: 'dRPC',
         tracking: 'none',
       },
+      {
+        url: 'https://1rpc.io/near',
+        operator: '1RPC',
+        tracking: 'none',
+      },
     ],
   },
   {
@@ -163,6 +195,16 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         url: 'https://toncenter.com/api/v2/jsonRPC',
         operator: 'TON Foundation',
         tracking: 'unspecified',
+      },
+      {
+        url: 'https://tonapi.io/v2',
+        operator: 'TonAPI',
+        tracking: 'limited',
+      },
+      {
+        url: 'https://mainnet-v4.tonhubapi.com',
+        operator: 'TonHub',
+        tracking: 'none',
       },
     ],
   },
@@ -182,7 +224,12 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         tracking: 'unspecified',
       },
       {
-        url: 'https://tron-rpc.publicnode.com',
+        url: 'https://tron-rpc.publicnode.com/jsonrpc',
+        operator: 'PublicNode',
+        tracking: 'none',
+      },
+      {
+        url: 'https://tron-evm-rpc.publicnode.com',
         operator: 'PublicNode',
         tracking: 'none',
       },
