@@ -90,6 +90,12 @@ const APEX_PROVIDERS: Record<string, ProviderDef> = {
   'pops.one': { name: 'P-OPS', id: 'pops', kind: 'public-rpc-aggregator' },
   'blockchair.com': { name: 'Blockchair', id: 'blockchair', kind: 'public-rpc-aggregator' },
   'blockstream.info': { name: 'Blockstream Esplora', id: 'blockstream', kind: 'public-rpc-aggregator' },
+  'mempool.space': { name: 'Mempool.space', id: 'mempool', kind: 'public-rpc-aggregator' },
+  'blockchain.info': { name: 'Blockchain.com', id: 'blockchain-com', kind: 'public-rpc-aggregator' },
+  'blockcypher.com': { name: 'BlockCypher', id: 'blockcypher', kind: 'public-rpc-aggregator' },
+  'btcscan.org': { name: 'BTCScan', id: 'btcscan', kind: 'public-rpc-aggregator' },
+  'litecoinspace.org': { name: 'Litecoin Space', id: 'litecoinspace', kind: 'public-rpc-aggregator' },
+  'polkachu.com': { name: 'Polkachu', id: 'polkachu', kind: 'public-rpc-aggregator' },
   'ibp.network': { name: 'IBP Network', id: 'ibp', kind: 'public-rpc-aggregator' },
   'xrplcluster.com': { name: 'XRPL Cluster', id: 'xrplcluster', kind: 'public-rpc-aggregator' },
   'ripple.com': { name: 'Ripple', id: 'ripple', kind: 'foundation' },
@@ -102,6 +108,9 @@ const APEX_PROVIDERS: Record<string, ProviderDef> = {
   'movementnetwork.xyz': { name: 'Movement Labs', id: 'movement-labs', kind: 'foundation' },
   'shardeum.org': { name: 'Shardeum Foundation', id: 'shardeum-foundation', kind: 'foundation' },
   'hashio.io': { name: 'Hashio', id: 'hashio', kind: 'public-rpc-aggregator' },
+  'vechain.org': { name: 'VeChain Foundation', id: 'vechain-foundation', kind: 'foundation' },
+  'vechain.energy': { name: 'VeChain Energy (community)', id: 'vechain-energy', kind: 'other' },
+  'veblocks.net': { name: 'VeBlocks', id: 'veblocks', kind: 'public-rpc-aggregator' },
 
   // Rollup-as-a-service — every rollup they host shares this infra.
   'conduit.xyz': { name: 'Conduit', id: 'conduit', kind: 'rollup-infra' },

@@ -301,6 +301,31 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         operator: 'Blockstream Esplora',
         tracking: 'limited',
       },
+      {
+        url: 'https://mempool.space/api',
+        operator: 'Mempool.space',
+        tracking: 'none',
+      },
+      {
+        url: 'https://blockchain.info/q/getblockcount',
+        operator: 'Blockchain.com',
+        tracking: 'limited',
+      },
+      {
+        url: 'https://api.blockcypher.com/v1/btc/main',
+        operator: 'BlockCypher',
+        tracking: 'limited',
+      },
+      {
+        url: 'https://api.blockchair.com/bitcoin/stats',
+        operator: 'Blockchair',
+        tracking: 'limited',
+      },
+      {
+        url: 'https://btcscan.org/api',
+        operator: 'BTCScan',
+        tracking: 'none',
+      },
     ],
   },
   {
@@ -416,6 +441,16 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         operator: 'Blockchair',
         tracking: 'limited',
       },
+      {
+        url: 'https://litecoinspace.org/api',
+        operator: 'Litecoin Space',
+        tracking: 'none',
+      },
+      {
+        url: 'https://api.blockcypher.com/v1/ltc/main',
+        operator: 'BlockCypher',
+        tracking: 'limited',
+      },
     ],
   },
   {
@@ -433,6 +468,11 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         operator: 'Blockchair',
         tracking: 'limited',
       },
+      {
+        url: 'https://api.blockcypher.com/v1/doge/main',
+        operator: 'BlockCypher',
+        tracking: 'limited',
+      },
     ],
   },
   {
@@ -448,6 +488,11 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
       {
         url: 'https://cosmos-rpc.publicnode.com:443/status',
         operator: 'PublicNode',
+        tracking: 'none',
+      },
+      {
+        url: 'https://cosmos-rpc.polkachu.com/status',
+        operator: 'Polkachu',
         tracking: 'none',
       },
     ],
