@@ -24,7 +24,22 @@ export type ChainSource = 'chainlist.org' | 'ethereum-lists';
 export type RpcTracking = 'none' | 'limited' | 'yes' | 'unspecified' | 'unknown';
 export type RpcKind = 'http' | 'wss' | 'other';
 
-export type ChainArch = 'evm' | 'solana' | 'move' | 'substrate' | 'cosmos' | 'tron' | 'ton' | 'stacks' | 'bitcoin' | 'other';
+export type ChainArch =
+  | 'evm'
+  | 'solana'
+  | 'move'
+  | 'substrate'
+  | 'cosmos'
+  | 'tron'
+  | 'ton'
+  | 'stacks'
+  | 'bitcoin'
+  | 'cardano'
+  | 'algorand'
+  | 'ripple'
+  | 'icp'
+  | 'flow'
+  | 'other';
 
 export type RpcEndpoint = {
   url: string;

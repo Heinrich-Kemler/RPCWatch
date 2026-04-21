@@ -80,6 +80,27 @@ const APEX_PROVIDERS: Record<string, ProviderDef> = {
   'tonhubapi.com': { name: 'TonHub', id: 'tonhub', kind: 'foundation' },
   'tonapi.io': { name: 'TonAPI', id: 'tonapi', kind: 'foundation' },
   'blockeden.xyz': { name: 'BlockEden', id: 'blockeden', kind: 'public-rpc-aggregator' },
+  // Non-EVM ecosystem operators
+  'nodely.dev': { name: 'Nodely', id: 'nodely', kind: 'public-rpc-aggregator' },
+  'nodely.io': { name: 'Nodely', id: 'nodely', kind: 'public-rpc-aggregator' },
+  'algonode.cloud': { name: 'Nodely (algonode)', id: 'nodely', kind: 'public-rpc-aggregator' },
+  'koios.rest': { name: 'Koios', id: 'koios', kind: 'public-rpc-aggregator' },
+  'numia.xyz': { name: 'Numia', id: 'numia', kind: 'public-rpc-aggregator' },
+  'pops.one': { name: 'P-OPS', id: 'pops', kind: 'public-rpc-aggregator' },
+  'blockchair.com': { name: 'Blockchair', id: 'blockchair', kind: 'public-rpc-aggregator' },
+  'blockstream.info': { name: 'Blockstream Esplora', id: 'blockstream', kind: 'public-rpc-aggregator' },
+  'ibp.network': { name: 'IBP Network', id: 'ibp', kind: 'public-rpc-aggregator' },
+  'xrplcluster.com': { name: 'XRPL Cluster', id: 'xrplcluster', kind: 'public-rpc-aggregator' },
+  'ripple.com': { name: 'Ripple', id: 'ripple', kind: 'foundation' },
+  'orbs.network': { name: 'Orbs TON Access', id: 'orbs', kind: 'public-rpc-aggregator' },
+  // Chain-native / foundation endpoints
+  'onflow.org': { name: 'Dapper Labs', id: 'dapper', kind: 'foundation' },
+  'ic0.app': { name: 'DFINITY', id: 'dfinity', kind: 'foundation' },
+  'sei-apis.com': { name: 'Sei Foundation', id: 'sei-foundation', kind: 'foundation' },
+  'injective.network': { name: 'Injective Foundation', id: 'injective-foundation', kind: 'foundation' },
+  'movementnetwork.xyz': { name: 'Movement Labs', id: 'movement-labs', kind: 'foundation' },
+  'shardeum.org': { name: 'Shardeum Foundation', id: 'shardeum-foundation', kind: 'foundation' },
+  'hashio.io': { name: 'Hashio', id: 'hashio', kind: 'public-rpc-aggregator' },
 
   // Rollup-as-a-service — every rollup they host shares this infra.
   'conduit.xyz': { name: 'Conduit', id: 'conduit', kind: 'rollup-infra' },
