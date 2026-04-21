@@ -3,3 +3,8 @@ node_modules
 .DS_Store
 tsconfig.tsbuildinfo
 .claude
+
+# env files — never commit. Keep .env.example tracked if we ever need a template.
+.env
+.env.*
+!.env.example

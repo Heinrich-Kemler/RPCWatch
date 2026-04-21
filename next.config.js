@@ -22,7 +22,12 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      // 'unsafe-inline' stays because Next.js hydration still ships inline
+      // bootstrap scripts. 'unsafe-eval' was removed 2026-04-21 — no code path
+      // on this site uses eval/new Function, so it should not be needed in
+      // production. If a future dep reintroduces it, prefer the nonce-based
+      // CSP migration over restoring 'unsafe-eval' wholesale.
+      "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",

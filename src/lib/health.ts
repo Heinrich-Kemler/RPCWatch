@@ -4,6 +4,9 @@ import {
   isHttpRpc,
   type ProcessedChain,
 } from './chains';
+import { assertSafeProbeTarget, UnsafeProbeTargetError } from './safeFetch';
+
+const MAX_CONCURRENT_PROBES = 5;
 
 export type RpcHealthStatus = 'online' | 'slow' | 'offline' | 'error';
 
@@ -73,6 +76,22 @@ async function checkRpc(url: string): Promise<RpcHealthResult> {
   const startedAt = Date.now();
 
   try {
+    assertSafeProbeTarget(url);
+  } catch (error) {
+    if (error instanceof UnsafeProbeTargetError) {
+      return {
+        url,
+        displayUrl: truncateUrl(url),
+        status: 'error',
+        latencyMs: null,
+        blockNumber: null,
+        error: `Refused unsafe target (${error.reason})`,
+      };
+    }
+    throw error;
+  }
+
+  try {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -86,6 +105,7 @@ async function checkRpc(url: string): Promise<RpcHealthResult> {
       }),
       signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
       cache: 'no-store',
+      redirect: 'manual',
     });
 
     const latencyMs = Date.now() - startedAt;
@@ -149,9 +169,31 @@ async function checkRpc(url: string): Promise<RpcHealthResult> {
   }
 }
 
+async function runConcurrent<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (true) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= items.length) return;
+      results[index] = await fn(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 export async function checkChainHealth(chain: ProcessedChain): Promise<ChainHealthResponse> {
   const publicHttpRpcs = chain.publicRpcs.filter((rpcUrl) => isHttpRpc(rpcUrl));
-  const results = await Promise.all(publicHttpRpcs.map((rpcUrl) => checkRpc(rpcUrl)));
+  // Cap concurrency so a chain with 70+ listed RPCs doesn't fan out a
+  // 70-wide outbound burst on every request.
+  const results = await runConcurrent(publicHttpRpcs, MAX_CONCURRENT_PROBES, checkRpc);
 
   return {
     chainId: chain.chainId,
