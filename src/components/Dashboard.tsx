@@ -20,25 +20,25 @@ const FILTERS: { key: FilterKey; label: string; matches: (chain: ProcessedChain)
   { key: 'all', label: 'All', matches: () => true },
   {
     key: 'critical',
-    label: 'Critical (1 RPC)',
-    matches: (chain) => chain.publicRpcCount === 1,
+    label: 'Critical (1 provider)',
+    matches: (chain) => chain.distinctProviders === 1,
   },
   {
     key: 'at-risk',
     label: 'At Risk (2–3)',
-    matches: (chain) => chain.publicRpcCount >= 2 && chain.publicRpcCount <= 3,
+    matches: (chain) => chain.distinctProviders >= 2 && chain.distinctProviders <= 3,
   },
   {
     key: 'safe',
     label: 'Safe (4+)',
-    matches: (chain) => chain.publicRpcCount >= 4,
+    matches: (chain) => chain.distinctProviders >= 4,
   },
 ];
 
-function formatRpcLabel(count: number): string {
-  if (count === 0) return '0 public RPCs';
-  if (count === 1) return '1 RPC';
-  return `${count} RPCs`;
+function formatProviderLabel(count: number): string {
+  if (count === 0) return '0 providers';
+  if (count === 1) return '1 provider';
+  return `${count} providers`;
 }
 
 function tabCount(chains: ProcessedChain[], key: FilterKey): number {
@@ -93,30 +93,42 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
         if (leftTvl !== rightTvl) {
           return rightTvl - leftTvl;
         }
-        // 3. Break remaining ties by RPC count (asc for danger tabs, desc for Safe)
-        if (left.publicRpcCount !== right.publicRpcCount) {
+        // 3. Break remaining ties by provider count (asc for danger tabs, desc for Safe)
+        if (left.distinctProviders !== right.distinctProviders) {
           return safestFirst
-            ? right.publicRpcCount - left.publicRpcCount
-            : left.publicRpcCount - right.publicRpcCount;
+            ? right.distinctProviders - left.distinctProviders
+            : left.distinctProviders - right.distinctProviders;
         }
         return left.name.localeCompare(right.name);
       });
   }, [visibleUniverse, filter, query]);
 
   const criticalChains = useMemo(
-    () => visibleUniverse.filter((chain) => chain.publicRpcCount === 1),
+    () => visibleUniverse.filter((chain) => chain.distinctProviders === 1),
     [visibleUniverse],
   );
 
   const stats = useMemo(() => {
     const total = visibleUniverse.length;
-    const critical = visibleUniverse.filter((chain) => chain.publicRpcCount === 1).length;
+    const critical = visibleUniverse.filter((chain) => chain.distinctProviders === 1).length;
     const atRisk = visibleUniverse.filter(
-      (chain) => chain.publicRpcCount >= 2 && chain.publicRpcCount <= 3,
+      (chain) => chain.distinctProviders >= 2 && chain.distinctProviders <= 3,
     ).length;
-    const safe = visibleUniverse.filter((chain) => chain.publicRpcCount >= 4).length;
-    const noData = visibleUniverse.filter((chain) => chain.publicRpcCount === 0).length;
+    const safe = visibleUniverse.filter((chain) => chain.distinctProviders >= 4).length;
+    const noData = visibleUniverse.filter((chain) => chain.distinctProviders === 0).length;
     return { total, critical, atRisk, safe, noData };
+  }, [visibleUniverse]);
+
+  const criticalWithTvl = useMemo(() => {
+    return visibleUniverse
+      .filter(
+        (chain) =>
+          chain.distinctProviders === 1 &&
+          chain.tvlUsd !== null &&
+          chain.tvlUsd >= SIGNIFICANT_TVL_USD,
+      )
+      .sort((left, right) => (right.tvlUsd ?? 0) - (left.tvlUsd ?? 0))
+      .slice(0, 10);
   }, [visibleUniverse]);
 
   const highlightedCritical = useMemo(() => {
@@ -148,6 +160,10 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
           setActiveOnly={setActiveOnly}
           universe={visibleUniverse}
         />
+
+        {filter === 'critical' && criticalWithTvl.length > 0 && (
+          <TvlLeaderboard chains={criticalWithTvl} />
+        )}
 
         {filter === 'critical' && highlightedCritical.length > 0 && (
           <CriticalCallout chains={highlightedCritical} totalCritical={criticalChains.length} />
@@ -412,6 +428,49 @@ function CriticalCallout({
   );
 }
 
+function TvlLeaderboard({ chains }: { chains: ProcessedChain[] }) {
+  return (
+    <section className="mb-6 overflow-hidden rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-card shadow-card">
+      <div className="flex items-start gap-3 px-6 pt-6">
+        <span className="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-100 text-sm font-bold text-critical">
+          $
+        </span>
+        <div className="flex-1">
+          <h2 className="text-xl font-semibold text-text">Single-provider chains by TVL</h2>
+          <p className="mt-1 text-sm text-muted">
+            Chains with all public RPCs behind <span className="font-semibold text-text">one</span>{' '}
+            operator AND ≥ $1M on-chain value. If the provider goes offline, this much value loses
+            access to its own chain.
+          </p>
+        </div>
+      </div>
+      <ol className="mt-4 divide-y divide-border border-t border-red-100">
+        {chains.map((chain, index) => {
+          const provider = chain.providerGroups[0];
+          return (
+            <li key={chain.chainId} className="grid grid-cols-[2.4rem_1fr_auto] items-center gap-3 px-6 py-3 text-sm">
+              <span className="font-mono text-xs text-muted">#{index + 1}</span>
+              <Link
+                href={`/chain/${chain.chainId}`}
+                className="min-w-0 hover:text-critical"
+              >
+                <span className="block truncate font-semibold text-text">{chain.name}</span>
+                <span className="block truncate text-xs text-muted">
+                  Sole provider:{' '}
+                  <span className="font-medium text-text">{provider?.name ?? '—'}</span>
+                </span>
+              </Link>
+              <span className="whitespace-nowrap rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-critical">
+                {formatCompactUsd(chain.tvlUsd ?? 0)}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
 function ChainTable({
   chains,
   expanded,
@@ -434,7 +493,7 @@ function ChainTable({
       <div className="hidden grid-cols-[1.8fr_0.6fr_0.7fr_0.9fr_1.5fr_0.6fr] gap-4 border-b border-border bg-surface px-5 py-3 text-[0.7rem] font-semibold uppercase tracking-wider text-muted md:grid">
         <div>Chain</div>
         <div>Chain ID</div>
-        <div>RPC count</div>
+        <div>Providers</div>
         <div>Risk</div>
         <div>RPCs</div>
         <div className="text-right">Explorer</div>
@@ -464,9 +523,11 @@ function ChainRow({
   onToggle: () => void;
 }) {
   const riskStyle = riskPalette(chain.riskLevel);
-  const countStyle = rpcCountPalette(chain.publicRpcCount);
+  const countStyle = rpcCountPalette(chain.distinctProviders);
   const explorer = chain.explorers[0];
   const initial = chain.name.charAt(0).toUpperCase();
+  const soleProvider = chain.distinctProviders === 1 ? chain.providerGroups[0] : null;
+  const allRpcsSameProvider = chain.publicRpcCount >= 2 && chain.distinctProviders === 1;
 
   return (
     <li className="grid grid-cols-1 gap-3 px-5 py-4 transition hover:bg-surface/60 md:grid-cols-[1.8fr_0.6fr_0.7fr_0.9fr_1.5fr_0.6fr] md:items-center md:gap-4">
@@ -520,9 +581,22 @@ function ChainRow({
             {chain.sources.length > 1 && (
               <span
                 className="rounded-full border border-border bg-surface px-2 py-0.5 text-[0.65rem] uppercase tracking-wider text-muted"
-                title="Present in both chainlist.org and ethereum-lists"
+                title="Present in more than one registry"
               >
-                2 sources
+                {chain.sources.length} sources
+              </span>
+            )}
+            {chain.isNonEvm && (
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-amber-700">
+                {chain.arch}
+              </span>
+            )}
+            {allRpcsSameProvider && soleProvider && (
+              <span
+                className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-critical"
+                title={`All ${chain.publicRpcCount} public RPCs resolve to ${soleProvider.name}`}
+              >
+                All via {soleProvider.name}
               </span>
             )}
           </div>
@@ -532,15 +606,18 @@ function ChainRow({
       <div className="flex items-center md:block">
         <span className="font-mono text-xs text-muted md:hidden">Chain ID · </span>
         <span className="rounded-md border border-border bg-surface px-2 py-1 font-mono text-xs text-text">
-          {chain.chainId}
+          {chain.isNonEvm ? chain.arch : chain.chainId}
         </span>
       </div>
 
       <div>
         <span className={`text-2xl font-semibold ${countStyle.text}`}>
-          {chain.publicRpcCount}
+          {chain.distinctProviders}
         </span>
-        <span className="ml-1 text-xs text-muted">{formatRpcLabel(chain.publicRpcCount)}</span>
+        <span className="ml-1 text-xs text-muted">{formatProviderLabel(chain.distinctProviders)}</span>
+        {chain.publicRpcCount !== chain.distinctProviders && chain.publicRpcCount > 0 && (
+          <span className="ml-1 text-[0.65rem] text-muted">({chain.publicRpcCount} URLs)</span>
+        )}
       </div>
 
       <div>
@@ -558,7 +635,9 @@ function ChainRow({
           onClick={onToggle}
           className="w-max rounded-md border border-border bg-card px-3 py-1.5 text-xs text-text shadow-sm transition hover:border-accent hover:text-accent"
         >
-          {expanded ? 'Hide RPCs' : `View ${chain.publicRpcCount} RPC${chain.publicRpcCount === 1 ? '' : 's'}`}
+          {expanded
+            ? 'Hide RPCs'
+            : `View ${chain.publicRpcCount} RPC${chain.publicRpcCount === 1 ? '' : 's'} · ${chain.distinctProviders} provider${chain.distinctProviders === 1 ? '' : 's'}`}
         </button>
         {expanded && (
           <ul className="space-y-1 text-xs">
@@ -615,17 +694,21 @@ function Methodology() {
       </summary>
       <div className="grid gap-4 border-t border-border px-5 py-4 text-sm text-muted sm:grid-cols-2">
         <div>
-          <div className="font-semibold text-text">Public RPC count</div>
+          <div className="font-semibold text-text">Providers, not URLs</div>
           <p className="mt-1">
-            We take the RPC list from both sources, union by URL, and drop any entry containing a{' '}
-            <code className="rounded bg-surface px-1">{'${VARIABLE}'}</code> placeholder (those
-            require an API key and are not usable by a stranger on the internet).
+            We count distinct <span className="font-semibold text-text">providers</span> — not URLs.
+            A chain listing <code className="rounded bg-surface px-1">rpc.orderly.network</code>{' '}
+            and <code className="rounded bg-surface px-1">…conduit.xyz</code> looks like two until
+            you notice Conduit operates both. Our provider map collapses URLs to their real
+            operator so redundancy isn&apos;t over-counted. Template URLs with{' '}
+            <code className="rounded bg-surface px-1">{'${VARIABLE}'}</code> are dropped — they
+            require an API key and aren&apos;t usable by a stranger.
           </p>
         </div>
         <div>
           <div className="font-semibold text-text">Risk tiers</div>
           <p className="mt-1">
-            <span className="font-semibold text-critical">Critical</span> = 1 public RPC ·{' '}
+            <span className="font-semibold text-critical">Critical</span> = 1 provider ·{' '}
             <span className="font-semibold text-warning">At risk</span> = 2–3 ·{' '}
             <span className="font-semibold text-safe">Safe</span> = 4+. Risk is about redundancy,
             not endorsement — a safe chain can still have a bad operator in the list.
@@ -662,8 +745,7 @@ function Disclaimer({ summary }: { summary: SourceFetchSummary }) {
         i
       </div>
       <div className="text-muted">
-        <span className="font-semibold text-text">Dual-source coverage.</span> RPC Watch merges
-        two independent public registries:{' '}
+        <span className="font-semibold text-text">Multi-source coverage.</span> RPC Watch merges{' '}
         <a
           href="https://chainlist.org/rpcs.json"
           target="_blank"
@@ -681,7 +763,7 @@ function Disclaimer({ summary }: { summary: SourceFetchSummary }) {
         >
           chainid.network
         </a>{' '}
-        (the{' '}
+        (
         <a
           href="https://github.com/ethereum-lists/chains"
           target="_blank"
@@ -689,17 +771,34 @@ function Disclaimer({ summary }: { summary: SourceFetchSummary }) {
           className="font-medium text-accent hover:underline"
         >
           ethereum-lists/chains
-        </a>{' '}
-        registry). We deduplicate by URL and keep every endpoint either source has seen.{' '}
+        </a>
+        ), joins TVL from{' '}
+        <a
+          href="https://api.llama.fi/v2/chains"
+          target="_blank"
+          rel="noreferrer"
+          className="font-medium text-accent hover:underline"
+        >
+          DefiLlama
+        </a>
+        , and adds a curated seed list of non-EVM L1s (Solana, Sui, Aptos, Near, TON, Tron,
+        Stacks) that neither RPC registry covers.{' '}
         <span className="font-medium text-text">
-          {summary.mergedCount.toLocaleString()} chains
+          {summary.mergedCount.toLocaleString()} EVM chains
         </span>{' '}
-        tracked — {summary.inBoth.toLocaleString()} appear in both sources,{' '}
-        {summary.onlyInChainlist.toLocaleString()} only in chainlist.org,{' '}
-        {summary.onlyInEthereumLists.toLocaleString()} only in ethereum-lists.
-        These lists are community-maintained and can lag reality or miss endpoints a project
-        hasn&apos;t registered — always verify with the project directly before trusting an
-        endpoint with assets.
+        tracked — {summary.inBoth.toLocaleString()} in both registries,{' '}
+        {summary.onlyInChainlist.toLocaleString()} only on chainlist.org,{' '}
+        {summary.onlyInEthereumLists.toLocaleString()} only on ethereum-lists.
+        {typeof summary.nonEvmSeedCount === 'number' && summary.nonEvmSeedCount > 0 && (
+          <>
+            {' '}
+            Plus{' '}
+            <span className="font-medium text-text">{summary.nonEvmSeedCount} non-EVM</span>{' '}
+            seed chains.
+          </>
+        )}{' '}
+        Sources are community-maintained and can lag reality — always verify with the project
+        directly before trusting an endpoint with assets.
       </div>
     </section>
   );

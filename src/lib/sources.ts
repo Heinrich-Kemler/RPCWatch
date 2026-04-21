@@ -230,6 +230,9 @@ export type SourceFetchSummary = {
   inBoth: number;
   totalRpcEntries: number;
   mergedAt: string;
+  defillamaAvailable?: boolean;
+  defillamaChainCount?: number;
+  nonEvmSeedCount?: number;
 };
 
 export async function fetchMergedRawChains(

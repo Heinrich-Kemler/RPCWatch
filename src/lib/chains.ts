@@ -1,4 +1,7 @@
+import { fetchDefiLlamaChains, resolveDefiLlamaTvl, type DefiLlamaIndex } from './defillama';
+import { NON_EVM_SEED } from './nonEvmChains';
 import { isNotableChain } from './notableChains';
+import { groupByProvider, identifyProvider, type ResolvedProvider } from './providers';
 import { fetchMergedRawChains } from './sources';
 
 export type Explorer = {
@@ -20,6 +23,8 @@ export type ChainSource = 'chainlist.org' | 'ethereum-lists';
 export type RpcTracking = 'none' | 'limited' | 'yes' | 'unspecified' | 'unknown';
 export type RpcKind = 'http' | 'wss' | 'other';
 
+export type ChainArch = 'evm' | 'solana' | 'move' | 'substrate' | 'cosmos' | 'tron' | 'ton' | 'stacks' | 'bitcoin' | 'other';
+
 export type RpcEndpoint = {
   url: string;
   kind: RpcKind;
@@ -27,6 +32,16 @@ export type RpcEndpoint = {
   tracking: RpcTracking;
   isOpenSource: boolean | null;
   sources: ChainSource[];
+  providerId: string;
+  providerName: string;
+  providerVerified: boolean;
+};
+
+export type ProviderGroup = {
+  id: string;
+  name: string;
+  verified: boolean;
+  urls: string[];
 };
 
 export type ProcessedChain = {
@@ -34,6 +49,8 @@ export type ProcessedChain = {
   name: string;
   shortName: string;
   chain: string;
+  arch: ChainArch;
+  caip2: string | null;
   nativeCurrency: NativeCurrency;
   rpc: string[];
   publicRpcs: string[];
@@ -43,6 +60,8 @@ export type ProcessedChain = {
   rpcDetails: RpcEndpoint[];
   publicRpcDetails: RpcEndpoint[];
   publicRpcCount: number;
+  providerGroups: ProviderGroup[];
+  distinctProviders: number;
   riskLevel: RiskLevel;
   riskScore: number;
   explorers: Explorer[];
@@ -50,8 +69,10 @@ export type ProcessedChain = {
   isTestnet: boolean;
   isDeprecated: boolean;
   isNotable: boolean;
+  isNonEvm: boolean;
   tvlUsd: number | null;
-  sources: ChainSource[];
+  tvlSource: 'defillama' | 'chainlist' | null;
+  sources: Array<ChainSource | 'non-evm-seed'>;
   lastChecked: string;
 };
 
@@ -188,44 +209,74 @@ export function isDeprecatedChain(name: string, chainId: number): boolean {
   return /deprecated/i.test(name) || DEPRECATED_CHAIN_IDS.has(chainId);
 }
 
-export function calculateRiskScore(publicRpcCount: number): number {
-  if (publicRpcCount <= 0) {
+export function calculateRiskScore(distinctProviders: number): number {
+  if (distinctProviders <= 0) {
     return 100;
   }
 
-  if (publicRpcCount === 1) {
+  if (distinctProviders === 1) {
     return 95;
   }
 
-  if (publicRpcCount === 2) {
+  if (distinctProviders === 2) {
     return 70;
   }
 
-  if (publicRpcCount === 3) {
+  if (distinctProviders === 3) {
     return 40;
   }
 
-  if (publicRpcCount === 4) {
+  if (distinctProviders === 4) {
     return 20;
   }
 
   return 5;
 }
 
-export function calculateRiskLevel(publicRpcCount: number): RiskLevel {
-  if (publicRpcCount <= 0) {
+export function calculateRiskLevel(distinctProviders: number): RiskLevel {
+  if (distinctProviders <= 0) {
     return 'no-data';
   }
 
-  if (publicRpcCount === 1) {
+  if (distinctProviders === 1) {
     return 'critical';
   }
 
-  if (publicRpcCount <= 3) {
+  if (distinctProviders <= 3) {
     return 'at-risk';
   }
 
   return 'safe';
+}
+
+function buildRpcDetailsFromUrls(
+  urls: string[],
+  sources: ChainSource[],
+): RpcEndpoint[] {
+  return urls.map<RpcEndpoint>((url) => {
+    const provider = identifyProvider(url);
+    return {
+      url,
+      kind: classifyRpcKind(url),
+      isTemplate: isTemplateRpc(url),
+      tracking: 'unknown',
+      isOpenSource: null,
+      sources,
+      providerId: provider.id,
+      providerName: provider.name,
+      providerVerified: provider.verified,
+    };
+  });
+}
+
+function providerGroupsFromDetails(details: RpcEndpoint[]): ProviderGroup[] {
+  const groups = groupByProvider(details.map((entry) => entry.url));
+  return groups.map<ProviderGroup>((group) => ({
+    id: group.provider.id,
+    name: group.provider.name,
+    verified: group.provider.verified,
+    urls: group.urls,
+  }));
 }
 
 export function processChains(rawChains: RawChain[], checkedAt = new Date().toISOString()): ProcessedChain[] {
@@ -246,21 +297,19 @@ export function processChains(rawChains: RawChain[], checkedAt = new Date().toIS
       const wssRpcs = rpc.filter((rpcUrl) => isWebsocketRpc(rpcUrl));
       const httpRpcs = rpc.filter((rpcUrl) => isHttpRpc(rpcUrl));
       const publicRpcCount = publicRpcs.length;
-      const riskScore = calculateRiskScore(publicRpcCount);
-      const rpcDetails = rpc.map<RpcEndpoint>((url) => ({
-        url,
-        kind: classifyRpcKind(url),
-        isTemplate: isTemplateRpc(url),
-        tracking: 'unknown',
-        isOpenSource: null,
-        sources: ['ethereum-lists'],
-      }));
+      const rpcDetails = buildRpcDetailsFromUrls(rpc, ['ethereum-lists']);
+      const publicRpcDetails = rpcDetails.filter((entry) => !entry.isTemplate);
+      const providerGroups = providerGroupsFromDetails(publicRpcDetails);
+      const distinctProviders = providerGroups.length;
+      const riskScore = calculateRiskScore(distinctProviders);
 
       return {
         chainId,
         name,
         shortName,
         chain,
+        arch: 'evm',
+        caip2: `eip155:${chainId}`,
         nativeCurrency: normalizeNativeCurrency(rawChain.nativeCurrency),
         rpc,
         publicRpcs,
@@ -268,16 +317,20 @@ export function processChains(rawChains: RawChain[], checkedAt = new Date().toIS
         wssRpcs,
         httpRpcs,
         rpcDetails,
-        publicRpcDetails: rpcDetails.filter((entry) => !entry.isTemplate),
+        publicRpcDetails,
         publicRpcCount,
-        riskLevel: calculateRiskLevel(publicRpcCount),
+        providerGroups,
+        distinctProviders,
+        riskLevel: calculateRiskLevel(distinctProviders),
         riskScore,
         explorers: normalizeExplorers(rawChain.explorers),
         infoURL: normalizeString(rawChain.infoURL),
         isTestnet: isTestnetName(name),
         isDeprecated: isDeprecatedChain(name, chainId),
         isNotable: isNotableChain(chainId),
+        isNonEvm: false,
         tvlUsd: null,
+        tvlSource: null,
         sources: ['ethereum-lists'],
         lastChecked: checkedAt,
       };
@@ -288,8 +341,8 @@ export function processChains(rawChains: RawChain[], checkedAt = new Date().toIS
         return right.riskScore - left.riskScore;
       }
 
-      if (left.publicRpcCount !== right.publicRpcCount) {
-        return left.publicRpcCount - right.publicRpcCount;
+      if (left.distinctProviders !== right.distinctProviders) {
+        return left.distinctProviders - right.distinctProviders;
       }
 
       return left.name.localeCompare(right.name);
@@ -335,6 +388,7 @@ type MergedRawLike = {
 export function processMergedChains(
   merged: MergedRawLike[],
   checkedAt = new Date().toISOString(),
+  defillamaIndex?: DefiLlamaIndex,
 ): ProcessedChain[] {
   return merged
     .map((raw) => {
@@ -343,14 +397,20 @@ export function processMergedChains(
       const shortName = normalizeString(raw.shortName, name.toLowerCase().replace(/\s+/g, '-'));
       const chainField = normalizeString(raw.chain, name);
 
-      const rpcDetails = raw.rpc.map<RpcEndpoint>((entry) => ({
-        url: entry.url,
-        kind: classifyRpcKind(entry.url),
-        isTemplate: isTemplateRpc(entry.url),
-        tracking: normalizeTracking(entry.tracking),
-        isOpenSource: typeof entry.isOpenSource === 'boolean' ? entry.isOpenSource : null,
-        sources: Array.from(new Set(entry.sources)) as ChainSource[],
-      }));
+      const rpcDetails = raw.rpc.map<RpcEndpoint>((entry) => {
+        const provider = identifyProvider(entry.url);
+        return {
+          url: entry.url,
+          kind: classifyRpcKind(entry.url),
+          isTemplate: isTemplateRpc(entry.url),
+          tracking: normalizeTracking(entry.tracking),
+          isOpenSource: typeof entry.isOpenSource === 'boolean' ? entry.isOpenSource : null,
+          sources: Array.from(new Set(entry.sources)) as ChainSource[],
+          providerId: provider.id,
+          providerName: provider.name,
+          providerVerified: provider.verified,
+        };
+      });
 
       const rpc = rpcDetails.map((entry) => entry.url);
       const publicRpcDetails = rpcDetails.filter((entry) => !entry.isTemplate);
@@ -359,21 +419,36 @@ export function processMergedChains(
       const wssRpcs = rpcDetails.filter((entry) => entry.kind === 'wss').map((entry) => entry.url);
       const httpRpcs = rpcDetails.filter((entry) => entry.kind === 'http').map((entry) => entry.url);
       const publicRpcCount = publicRpcDetails.length;
-      const riskScore = calculateRiskScore(publicRpcCount);
+      const providerGroups = providerGroupsFromDetails(publicRpcDetails);
+      const distinctProviders = providerGroups.length;
+      const riskScore = calculateRiskScore(distinctProviders);
       const isTestnet =
         typeof raw.isTestnetHint === 'boolean' ? raw.isTestnetHint : isTestnetName(name);
       // chainlist.org replicates mainnet TVL onto sibling testnet entries, so
       // null it out for testnets to avoid showing a testnet as having $117B TVL.
-      const tvlUsd =
+      const chainlistTvl =
         !isTestnet && typeof raw.tvl === 'number' && Number.isFinite(raw.tvl) && raw.tvl > 0
           ? raw.tvl
           : null;
+
+      // DefiLlama is the upstream source; prefer it when available.
+      let tvlUsd: number | null = chainlistTvl;
+      let tvlSource: ProcessedChain['tvlSource'] = chainlistTvl !== null ? 'chainlist' : null;
+      if (!isTestnet && defillamaIndex) {
+        const { tvl } = resolveDefiLlamaTvl(defillamaIndex, chainId, name);
+        if (tvl !== null && tvl > 0) {
+          tvlUsd = tvl;
+          tvlSource = 'defillama';
+        }
+      }
 
       return {
         chainId,
         name,
         shortName,
         chain: chainField,
+        arch: 'evm',
+        caip2: `eip155:${chainId}`,
         nativeCurrency: normalizeNativeCurrency(raw.nativeCurrency ?? null),
         rpc,
         publicRpcs,
@@ -383,14 +458,18 @@ export function processMergedChains(
         rpcDetails,
         publicRpcDetails,
         publicRpcCount,
-        riskLevel: calculateRiskLevel(publicRpcCount),
+        providerGroups,
+        distinctProviders,
+        riskLevel: calculateRiskLevel(distinctProviders),
         riskScore,
         explorers: normalizeExplorers(raw.explorers ?? null),
         infoURL: normalizeString(raw.infoURL ?? null),
         isTestnet,
         isDeprecated: isDeprecatedChain(name, chainId),
         isNotable: isNotableChain(chainId),
+        isNonEvm: false,
         tvlUsd,
+        tvlSource,
         sources: Array.from(new Set(raw.sources)) as ChainSource[],
         lastChecked: checkedAt,
       } as ProcessedChain;
@@ -399,11 +478,107 @@ export function processMergedChains(
       if (right.riskScore !== left.riskScore) {
         return right.riskScore - left.riskScore;
       }
-      if (left.publicRpcCount !== right.publicRpcCount) {
-        return left.publicRpcCount - right.publicRpcCount;
+      if (left.distinctProviders !== right.distinctProviders) {
+        return left.distinctProviders - right.distinctProviders;
       }
       return left.name.localeCompare(right.name);
     });
+}
+
+/**
+ * Turn the non-EVM seed table entries into ProcessedChain records and
+ * join TVL from DefiLlama.
+ */
+export function processNonEvmSeeds(
+  checkedAt = new Date().toISOString(),
+  defillamaIndex?: DefiLlamaIndex,
+): ProcessedChain[] {
+  return NON_EVM_SEED.map<ProcessedChain>((seed) => {
+    const rpcDetails: RpcEndpoint[] = seed.rpcs.map((entry) => {
+      const fromMap = identifyProvider(entry.url);
+      // Seed operators are authoritative: if the map returns unknown but
+      // we have a declared operator, use that as the provider identity.
+      const provider: ResolvedProvider = fromMap.verified
+        ? fromMap
+        : {
+            id: `seed:${entry.operator.toLowerCase()}`,
+            name: entry.operator,
+            kind: 'foundation',
+            verified: true,
+          };
+      return {
+        url: entry.url,
+        kind: classifyRpcKind(entry.url),
+        isTemplate: isTemplateRpc(entry.url),
+        tracking: entry.tracking ?? 'unspecified',
+        isOpenSource: typeof entry.isOpenSource === 'boolean' ? entry.isOpenSource : null,
+        sources: [],
+        providerId: provider.id,
+        providerName: provider.name,
+        providerVerified: provider.verified,
+      };
+    });
+
+    const publicRpcDetails = rpcDetails.filter((entry) => !entry.isTemplate);
+    const publicRpcs = publicRpcDetails.map((entry) => entry.url);
+    const urls = rpcDetails.map((entry) => entry.url);
+    const providerGroupsRaw = new Map<string, ProviderGroup>();
+    for (const detail of publicRpcDetails) {
+      const existing = providerGroupsRaw.get(detail.providerId);
+      if (existing) existing.urls.push(detail.url);
+      else
+        providerGroupsRaw.set(detail.providerId, {
+          id: detail.providerId,
+          name: detail.providerName,
+          verified: detail.providerVerified,
+          urls: [detail.url],
+        });
+    }
+    const providerGroups = Array.from(providerGroupsRaw.values());
+    const distinctProviders = providerGroups.length;
+
+    let tvlUsd: number | null = null;
+    let tvlSource: ProcessedChain['tvlSource'] = null;
+    if (defillamaIndex) {
+      const resolved = resolveDefiLlamaTvl(defillamaIndex, seed.chainId, seed.defillamaName);
+      if (resolved.tvl !== null && resolved.tvl > 0) {
+        tvlUsd = resolved.tvl;
+        tvlSource = 'defillama';
+      }
+    }
+
+    return {
+      chainId: seed.chainId,
+      name: seed.name,
+      shortName: seed.shortName,
+      chain: seed.name,
+      arch: seed.arch,
+      caip2: seed.caip2,
+      nativeCurrency: seed.nativeCurrency,
+      rpc: urls,
+      publicRpcs,
+      templateRpcs: [],
+      wssRpcs: rpcDetails.filter((entry) => entry.kind === 'wss').map((entry) => entry.url),
+      httpRpcs: rpcDetails.filter((entry) => entry.kind === 'http').map((entry) => entry.url),
+      rpcDetails,
+      publicRpcDetails,
+      publicRpcCount: publicRpcDetails.length,
+      providerGroups,
+      distinctProviders,
+      riskLevel: calculateRiskLevel(distinctProviders),
+      riskScore: calculateRiskScore(distinctProviders),
+      explorers: [],
+      infoURL: seed.infoURL,
+      isTestnet: false,
+      isDeprecated: false,
+      isNotable: true,
+      isNonEvm: true,
+      tvlUsd,
+      tvlSource,
+      sources: ['non-evm-seed'],
+      lastChecked: checkedAt,
+    };
+  });
 }
 
 export async function fetchRawChains(init?: FetchWithNextCacheInit): Promise<RawChain[]> {
@@ -428,14 +603,41 @@ export async function fetchRawChains(init?: FetchWithNextCacheInit): Promise<Raw
 }
 
 export async function getProcessedChains(init?: FetchWithNextCacheInit): Promise<ProcessedChain[]> {
-  const { chains } = await fetchMergedRawChains(init);
-  return processMergedChains(chains);
+  const { chains } = await getProcessedChainBundle(init);
+  return chains;
 }
 
 export async function getProcessedChainBundle(init?: FetchWithNextCacheInit) {
-  const { chains, summary } = await fetchMergedRawChains(init);
-  const processed = processMergedChains(chains);
-  return { chains: processed, summary };
+  const [mergedResult, defillamaResult] = await Promise.allSettled([
+    fetchMergedRawChains(init),
+    fetchDefiLlamaChains(),
+  ]);
+
+  if (mergedResult.status === 'rejected') {
+    throw mergedResult.reason instanceof Error
+      ? mergedResult.reason
+      : new Error('Failed to fetch chain registries.');
+  }
+
+  const { chains: rawChains, summary } = mergedResult.value;
+  const defillamaIndex =
+    defillamaResult.status === 'fulfilled' ? defillamaResult.value : undefined;
+
+  const evmChains = processMergedChains(rawChains, undefined, defillamaIndex);
+  const nonEvmChains = processNonEvmSeeds(undefined, defillamaIndex);
+
+  // Non-EVM seed entries always go at the top of their risk tier because
+  // they are hand-curated and authoritative.
+  const chains = [...nonEvmChains, ...evmChains];
+
+  const enrichedSummary = {
+    ...summary,
+    defillamaAvailable: defillamaResult.status === 'fulfilled',
+    defillamaChainCount: defillamaResult.status === 'fulfilled' ? defillamaResult.value.byChainId.size : 0,
+    nonEvmSeedCount: nonEvmChains.length,
+  };
+
+  return { chains, summary: enrichedSummary };
 }
 
 export function getChainById(chains: ProcessedChain[], chainId: number): ProcessedChain | undefined {
