@@ -1,4 +1,5 @@
 import { fetchDefiLlamaChains, resolveDefiLlamaTvl, type DefiLlamaIndex } from './defillama';
+import { keyGatedProvidersFor, type KeyGatedProvider } from './keyGatedProviders';
 import { NON_EVM_SEED } from './nonEvmChains';
 import { isNotableChain } from './notableChains';
 import { groupByProvider, identifyProvider, type ResolvedProvider } from './providers';
@@ -72,6 +73,7 @@ export type ProcessedChain = {
   isNonEvm: boolean;
   tvlUsd: number | null;
   tvlSource: 'defillama' | 'chainlist' | null;
+  keyGatedProviders: KeyGatedProvider[];
   sources: Array<ChainSource | 'non-evm-seed'>;
   lastChecked: string;
 };
@@ -331,11 +333,16 @@ export function processChains(rawChains: RawChain[], checkedAt = new Date().toIS
         isNonEvm: false,
         tvlUsd: null,
         tvlSource: null,
+        keyGatedProviders: [],
         sources: ['ethereum-lists'],
         lastChecked: checkedAt,
       };
     })
     .filter((chain): chain is ProcessedChain => chain !== null)
+    .map((chain) => {
+      chain.keyGatedProviders = keyGatedProvidersFor(chain);
+      return chain;
+    })
     .sort((left, right) => {
       if (right.riskScore !== left.riskScore) {
         return right.riskScore - left.riskScore;
@@ -470,9 +477,14 @@ export function processMergedChains(
         isNonEvm: false,
         tvlUsd,
         tvlSource,
+        keyGatedProviders: [],
         sources: Array.from(new Set(raw.sources)) as ChainSource[],
         lastChecked: checkedAt,
       } as ProcessedChain;
+    })
+    .map((chain) => {
+      chain.keyGatedProviders = keyGatedProvidersFor(chain);
+      return chain;
     })
     .sort((left, right) => {
       if (right.riskScore !== left.riskScore) {
@@ -575,9 +587,13 @@ export function processNonEvmSeeds(
       isNonEvm: true,
       tvlUsd,
       tvlSource,
+      keyGatedProviders: [],
       sources: ['non-evm-seed'],
       lastChecked: checkedAt,
     };
+  }).map((chain) => {
+    chain.keyGatedProviders = keyGatedProvidersFor(chain);
+    return chain;
   });
 }
 

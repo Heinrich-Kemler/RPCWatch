@@ -686,6 +686,14 @@ function ChainRow({
                 All via {soleProvider.name}
               </Link>
             )}
+            {chain.keyGatedProviders.length > 0 && (
+              <span
+                className="rounded-full border border-yellow-200 bg-yellow-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-caution"
+                title={`Also available on ${chain.keyGatedProviders.length} paid / sign-up-required platform${chain.keyGatedProviders.length === 1 ? '' : 's'}`}
+              >
+                +{chain.keyGatedProviders.length} paid
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -785,16 +793,21 @@ function Methodology() {
       <div className="space-y-5 border-t border-border px-5 py-5 text-sm text-muted">
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
           <div className="font-semibold text-amber-900">
-            &ldquo;1 public RPC&rdquo; means <em>1 listed in our sources</em>, not{' '}
-            <em>1 that exists</em>.
+            Two numbers, two different questions.
           </div>
           <p className="mt-1 text-amber-900/80">
-            We&apos;re bounded by what the community registries publish. A project can run five
-            public RPCs and only register one — we&apos;ll report one. A project can run zero
-            public RPCs and ship an API-key-only endpoint — we&apos;ll show &ldquo;no public
-            RPC.&rdquo; If you know a chain has more endpoints than we show, the fix is to open
-            a PR against the source registry (links below) — it&apos;ll flow through to us on the
-            next hourly refresh.
+            <span className="font-semibold text-amber-900">Distinct providers</span> (the risk
+            tier) counts operators a stranger with no account can reach{' '}
+            <em>right now</em>. That&apos;s the &ldquo;if my wallet has no keys, how many
+            independent paths into this chain do I have?&rdquo; number. A chain relying on one
+            anonymous operator is a single point of failure for its users — no sign-up flow fixes
+            that.{' '}
+            <span className="font-semibold text-amber-900">
+              Paid / sign-up-required platforms
+            </span>{' '}
+            are listed separately on each chain page. They matter if you&apos;re a project
+            building on a chain and can pay for redundancy, which is a real security upgrade,
+            just not one that helps an anonymous wallet.
           </p>
         </div>
 

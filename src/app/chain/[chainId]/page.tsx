@@ -186,6 +186,65 @@ export default async function ChainDetailPage({ params }: PageProps) {
           </div>
         </section>
 
+        {chain.keyGatedProviders.length > 0 && (
+          <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-card">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+                  Also available on {chain.keyGatedProviders.length} paid platform
+                  {chain.keyGatedProviders.length === 1 ? '' : 's'}
+                </h2>
+                <p className="mt-1 text-xs text-muted">
+                  These operators serve this chain, but require an account or paid plan. They
+                  don&apos;t reduce single-point-of-failure risk for an anonymous wallet —
+                  they&apos;re listed because a project building on this chain can pay for
+                  redundancy.
+                </p>
+              </div>
+            </div>
+            <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+              {chain.keyGatedProviders.map((provider) => {
+                const kindLabel = provider.kind === 'paid' ? 'Paid' : 'Sign-up required';
+                const kindClass =
+                  provider.kind === 'paid'
+                    ? 'bg-yellow-50 text-caution'
+                    : 'bg-blue-50 text-accent';
+                return (
+                  <li
+                    key={provider.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-sm"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold text-text">{provider.name}</div>
+                      <div className="truncate text-xs text-muted">{provider.homepage.replace(/^https?:\/\//, '')}</div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider ${kindClass}`}
+                      >
+                        {kindLabel}
+                      </span>
+                      {(() => {
+                        const safe = safeExternalHref(provider.docs);
+                        return safe ? (
+                          <a
+                            href={safe}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-md border border-border bg-card px-3 py-1 text-xs text-muted shadow-sm transition hover:border-accent hover:text-accent"
+                          >
+                            Docs ↗
+                          </a>
+                        ) : null;
+                      })()}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
         {chain.explorers.length > 0 && (
           <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-card">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Explorers</h2>
