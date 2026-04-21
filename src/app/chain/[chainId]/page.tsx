@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 
 import CopyButton from '../../../components/CopyButton';
 import ShareButtons from '../../../components/ShareButtons';
-import type { ProcessedChain, RpcEndpoint } from '../../../lib/chains';
+import type { ProcessedChain, ProviderGroup, RpcEndpoint } from '../../../lib/chains';
 import { SIGNIFICANT_TVL_USD } from '../../../lib/chains';
 import { getCachedChainById } from '../../../lib/chains.server';
 import { describeTracking, formatCompactUsd } from '../../../lib/format';
@@ -28,13 +28,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!chain) {
     return { title: 'Chain not found — RPC Watch' };
   }
-  const countLabel =
-    chain.publicRpcCount === 0
-      ? 'no public RPCs'
-      : `${chain.publicRpcCount} public RPC${chain.publicRpcCount === 1 ? '' : 's'}`;
+  const providerLabel =
+    chain.distinctProviders === 0
+      ? 'no public providers'
+      : chain.distinctProviders === 1
+      ? '1 provider'
+      : `${chain.distinctProviders} providers`;
   return {
-    title: `${chain.name} (${chain.chainId}) — RPC Watch`,
-    description: `${chain.name} currently has ${countLabel} on chainlist. Track endpoint risk on RPC Watch.`,
+    title: `${chain.name} (${chain.isNonEvm ? chain.arch : chain.chainId}) — RPC Watch`,
+    description: `${chain.name} runs on ${providerLabel} across ${chain.publicRpcCount} public RPC endpoint${chain.publicRpcCount === 1 ? '' : 's'}.`,
   };
 }
 
@@ -45,10 +47,15 @@ export default async function ChainDetailPage({ params }: PageProps) {
   }
 
   const risk = riskPalette(chain.riskLevel);
-  const countStyle = rpcCountPalette(chain.publicRpcCount);
-  const httpPublic = chain.publicRpcDetails.filter((entry) => entry.kind === 'http');
-  const wssPublic = chain.publicRpcDetails.filter((entry) => entry.kind === 'wss');
-  const otherPublic = chain.publicRpcDetails.filter((entry) => entry.kind === 'other');
+  const countStyle = rpcCountPalette(chain.distinctProviders);
+  const soleProvider =
+    chain.distinctProviders === 1 && chain.publicRpcCount >= 1 ? chain.providerGroups[0] : null;
+  const tvlSourceLabel =
+    chain.tvlSource === 'defillama'
+      ? 'Source: DefiLlama'
+      : chain.tvlSource === 'chainlist'
+      ? 'Source: chainlist.org'
+      : null;
 
   return (
     <main className="min-h-screen bg-bg text-text">
@@ -64,7 +71,7 @@ export default async function ChainDetailPage({ params }: PageProps) {
             <div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
                 <span className="rounded-full border border-border bg-surface px-2.5 py-1 font-mono">
-                  Chain ID {chain.chainId}
+                  {chain.isNonEvm ? chain.arch.toUpperCase() : `Chain ID ${chain.chainId}`}
                 </span>
                 <span className="rounded-full border border-border bg-surface px-2.5 py-1">
                   {chain.nativeCurrency.symbol} · {chain.nativeCurrency.name}
@@ -79,19 +86,24 @@ export default async function ChainDetailPage({ params }: PageProps) {
                     Testnet
                   </span>
                 )}
+                {chain.isNonEvm && (
+                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold uppercase tracking-wider text-amber-700">
+                    Non-EVM
+                  </span>
+                )}
                 {chain.tvlUsd !== null && chain.tvlUsd >= SIGNIFICANT_TVL_USD && (
                   <span
                     className="rounded-full bg-green-50 px-2.5 py-1 font-semibold uppercase tracking-wider text-safe"
-                    title="TVL reported by chainlist.org (via DefiLlama)"
+                    title={tvlSourceLabel ?? ''}
                   >
                     TVL {formatCompactUsd(chain.tvlUsd)}
                   </span>
                 )}
                 <span
                   className="rounded-full border border-border bg-surface px-2.5 py-1 uppercase tracking-wider"
-                  title={`Tracked by: ${chain.sources.join(' + ')}`}
+                  title={`Data from: ${chain.sources.join(' + ')}`}
                 >
-                  {chain.sources.length === 2 ? '2 sources' : chain.sources[0]}
+                  {chain.sources.length >= 2 ? `${chain.sources.length} sources` : chain.sources[0]}
                 </span>
               </div>
               <h1 className="mt-4 text-3xl font-bold sm:text-4xl">{chain.name}</h1>
@@ -105,33 +117,19 @@ export default async function ChainDetailPage({ params }: PageProps) {
                 <span className={`h-2 w-2 rounded-full ${risk.dot}`} />
                 {risk.label}
               </div>
-              <div className={`text-4xl font-bold ${countStyle.text}`}>
-                {chain.publicRpcCount}
+              <div className={`text-right text-4xl font-bold ${countStyle.text}`}>
+                {chain.distinctProviders}
                 <span className="ml-2 text-sm font-medium text-muted">
-                  public RPC{chain.publicRpcCount === 1 ? '' : 's'}
+                  provider{chain.distinctProviders === 1 ? '' : 's'}
                 </span>
+              </div>
+              <div className="text-right text-xs text-muted">
+                across {chain.publicRpcCount} public URL{chain.publicRpcCount === 1 ? '' : 's'}
               </div>
             </div>
           </div>
 
-          {chain.riskLevel === 'critical' && (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm">
-              <div className="font-semibold text-critical">Why this matters</div>
-              <p className="mt-1 text-muted">
-                This chain currently has only 1 public RPC endpoint. All wallets, dApps, and users
-                relying on this chain use the same endpoint. A single outage makes this chain
-                unreachable — and a compromise lets an attacker feed every user the same wrong
-                view of the chain.
-              </p>
-            </div>
-          )}
-
-          {chain.riskLevel === 'no-data' && (
-            <div className="mt-6 rounded-xl border border-border bg-surface p-4 text-sm text-muted">
-              No public RPC endpoints are listed on chainlist for this chain. Any listed RPCs
-              require API keys.
-            </div>
-          )}
+          <WhyThisMatters chain={chain} soleProvider={soleProvider} />
 
           <div className="mt-6 flex flex-wrap items-center gap-2">
             {chain.infoURL && (
@@ -153,13 +151,15 @@ export default async function ChainDetailPage({ params }: PageProps) {
           </div>
         </header>
 
+        <DependencyBlock chain={chain} />
+
         <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-card">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
-            Public RPC endpoints
+            Endpoints grouped by provider
           </h2>
           <p className="mt-1 text-xs text-muted">
-            Endpoints with <code className="text-text">{'${VARIABLE}'}</code> placeholders are
-            excluded — they require API keys and do not count as public RPCs.
+            URLs are grouped by the operator we identify them with. Multiple URLs under the same
+            provider represent the same operator — redundancy only counts at the provider level.
             {chain.templateRpcs.length > 0 && (
               <>
                 {' '}
@@ -169,11 +169,11 @@ export default async function ChainDetailPage({ params }: PageProps) {
             )}
           </p>
 
-          <div className="mt-4 space-y-6">
-            <RpcGroup label="HTTP" endpoints={httpPublic} />
-            <RpcGroup label="WebSocket" endpoints={wssPublic} />
-            {otherPublic.length > 0 && <RpcGroup label="Other" endpoints={otherPublic} />}
-            {chain.publicRpcs.length === 0 && (
+          <div className="mt-4 space-y-4">
+            {chain.providerGroups.map((group) => (
+              <ProviderCard key={group.id} group={group} details={chain.publicRpcDetails} />
+            ))}
+            {chain.providerGroups.length === 0 && (
               <div className="rounded-xl border border-border bg-surface p-4 text-sm text-muted">
                 No public RPC endpoints listed.
               </div>
@@ -209,8 +209,7 @@ export default async function ChainDetailPage({ params }: PageProps) {
         )}
 
         <section className="mt-8 rounded-2xl border border-border bg-surface p-5 text-xs text-muted">
-          <strong className="text-text">Disclaimer.</strong> RPC Watch merges two community
-          registries:{' '}
+          <strong className="text-text">Disclaimer.</strong> RPC Watch merges{' '}
           <a
             href="https://chainlist.org/rpcs.json"
             target="_blank"
@@ -218,8 +217,8 @@ export default async function ChainDetailPage({ params }: PageProps) {
             className="font-medium text-accent hover:underline"
           >
             chainlist.org
-          </a>{' '}
-          (per-RPC privacy &amp; open-source flags, TVL via DefiLlama) and{' '}
+          </a>
+          ,{' '}
           <a
             href="https://chainid.network/chains.json"
             target="_blank"
@@ -227,19 +226,19 @@ export default async function ChainDetailPage({ params }: PageProps) {
             className="font-medium text-accent hover:underline"
           >
             chainid.network
-          </a>{' '}
-          (the{' '}
+          </a>
+          , and{' '}
           <a
-            href="https://github.com/ethereum-lists/chains"
+            href="https://api.llama.fi/v2/chains"
             target="_blank"
             rel="noreferrer"
             className="font-medium text-accent hover:underline"
           >
-            ethereum-lists/chains
-          </a>{' '}
-          registry). Endpoints appear here if either source lists them. Both are
-          community-maintained and can be out of date — always verify with the project
-          directly before trusting an endpoint with assets.
+            DefiLlama
+          </a>
+          . Non-EVM chains come from a curated seed list. Sources are community-maintained and can
+          lag reality — always verify with the project directly before trusting an endpoint with
+          assets.
         </section>
 
         <section className="mt-4 text-xs text-muted">
@@ -252,67 +251,213 @@ export default async function ChainDetailPage({ params }: PageProps) {
   );
 }
 
-function RpcGroup({ label, endpoints }: { label: string; endpoints: RpcEndpoint[] }) {
-  if (endpoints.length === 0) return null;
+function WhyThisMatters({
+  chain,
+  soleProvider,
+}: {
+  chain: ProcessedChain;
+  soleProvider: ProviderGroup | null;
+}) {
+  if (chain.riskLevel === 'critical' && soleProvider) {
+    const multiUrl = chain.publicRpcCount >= 2;
+    return (
+      <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm">
+        <div className="font-semibold text-critical">Why this matters</div>
+        <p className="mt-1 text-muted">
+          Every public RPC for this chain resolves to{' '}
+          <span className="font-semibold text-text">{soleProvider.name}</span>
+          {multiUrl ? (
+            <>
+              {' '}
+              — all {chain.publicRpcCount} URLs are different entry points into the same operator.
+              If {soleProvider.name} goes down, the chain goes dark for every wallet and dApp.
+            </>
+          ) : (
+            <>
+              . A single outage and the chain goes dark for every wallet and dApp. A compromise
+              lets the attacker feed every user the same fabricated view of the chain.
+            </>
+          )}
+        </p>
+      </div>
+    );
+  }
+
+  if (chain.riskLevel === 'at-risk') {
+    return (
+      <div className="mt-6 rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm">
+        <div className="font-semibold text-warning">Thin redundancy</div>
+        <p className="mt-1 text-muted">
+          This chain is served by only{' '}
+          <span className="font-semibold text-text">{chain.distinctProviders}</span> distinct
+          providers. Losing one leaves the rest under load — losing two or three is effectively an
+          outage.
+        </p>
+      </div>
+    );
+  }
+
+  if (chain.riskLevel === 'no-data') {
+    return (
+      <div className="mt-6 rounded-xl border border-border bg-surface p-4 text-sm text-muted">
+        No public RPC endpoints are listed for this chain in our sources. Any listed RPCs require
+        an API key and aren&apos;t usable by an anonymous client.
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function DependencyBlock({ chain }: { chain: ProcessedChain }) {
+  if (chain.publicRpcCount === 0) return null;
 
   return (
-    <div>
-      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted">
-        <span>{label}</span>
-        <span>{endpoints.length}</span>
+    <section className="mt-8 grid gap-4 sm:grid-cols-3">
+      <StatCard
+        label="Distinct providers"
+        value={chain.distinctProviders.toString()}
+        tone={
+          chain.distinctProviders === 0
+            ? 'muted'
+            : chain.distinctProviders === 1
+            ? 'critical'
+            : chain.distinctProviders <= 3
+            ? 'warning'
+            : 'safe'
+        }
+        hint={chain.distinctProviders === 1 ? 'Single point of failure' : 'Operator-level redundancy'}
+      />
+      <StatCard
+        label="Public URLs"
+        value={chain.publicRpcCount.toString()}
+        tone="neutral"
+        hint={`${chain.templateRpcs.length} more require API keys`}
+      />
+      <StatCard
+        label="TVL"
+        value={chain.tvlUsd !== null ? formatCompactUsd(chain.tvlUsd) : '—'}
+        tone={chain.tvlUsd !== null && chain.tvlUsd >= SIGNIFICANT_TVL_USD ? 'safe' : 'neutral'}
+        hint={
+          chain.tvlSource === 'defillama'
+            ? 'From DefiLlama'
+            : chain.tvlSource === 'chainlist'
+            ? 'From chainlist.org'
+            : 'Not reported'
+        }
+      />
+    </section>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  tone,
+  hint,
+}: {
+  label: string;
+  value: string;
+  tone: 'critical' | 'warning' | 'safe' | 'muted' | 'neutral';
+  hint?: string;
+}) {
+  const toneClass =
+    tone === 'critical'
+      ? 'text-critical'
+      : tone === 'warning'
+      ? 'text-warning'
+      : tone === 'safe'
+      ? 'text-safe'
+      : tone === 'muted'
+      ? 'text-muted'
+      : 'text-text';
+  return (
+    <div className="rounded-2xl border border-border bg-card px-5 py-4 shadow-card">
+      <div className="text-xs uppercase tracking-wider text-muted">{label}</div>
+      <div className={`mt-1 text-2xl font-semibold ${toneClass}`}>{value}</div>
+      {hint && <div className="mt-1 text-xs text-muted">{hint}</div>}
+    </div>
+  );
+}
+
+function ProviderCard({ group, details }: { group: ProviderGroup; details: RpcEndpoint[] }) {
+  const groupEndpoints = details.filter((entry) => entry.providerId === group.id);
+  const verifiedStyle = group.verified
+    ? 'border-blue-200 bg-blue-50 text-accent'
+    : 'border-border bg-surface text-muted';
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/60 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wider ${verifiedStyle}`}
+            title={group.verified ? 'Operator identified via hostname map' : 'Operator inferred from apex hostname'}
+          >
+            {group.verified ? 'Provider' : 'Apex'}
+          </span>
+          <span className="text-sm font-semibold text-text">{group.name}</span>
+          <span className="text-xs text-muted">
+            · {group.urls.length} URL{group.urls.length === 1 ? '' : 's'}
+          </span>
+        </div>
       </div>
-      <ul className="mt-2 space-y-2">
-        {endpoints.map((endpoint) => {
-          const tracking = describeTracking(endpoint.tracking);
-          const toneClass =
-            tracking.tone === 'safe'
-              ? 'bg-green-50 text-safe'
-              : tracking.tone === 'caution'
-              ? 'bg-yellow-50 text-caution'
-              : tracking.tone === 'warning'
-              ? 'bg-red-50 text-critical'
-              : 'border border-border bg-card text-muted';
-          return (
-            <li
-              key={endpoint.url}
-              className="flex flex-col gap-2 rounded-xl border border-border bg-surface px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
-            >
-              <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="shrink-0 rounded-md border border-border bg-card px-2 py-0.5 text-[0.65rem] uppercase tracking-wider text-muted">
-                    {label}
-                  </span>
-                  <code className="truncate font-mono text-xs text-text" title={endpoint.url}>
-                    {endpoint.url}
-                  </code>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-[0.65rem] uppercase tracking-wider">
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${toneClass}`}
-                    title={tracking.description}
-                  >
-                    {tracking.label}
-                  </span>
-                  {endpoint.isOpenSource === true && (
-                    <span className="rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-accent">
-                      Open source
-                    </span>
-                  )}
-                  {endpoint.isOpenSource === false && (
-                    <span className="rounded-full border border-border bg-card px-2 py-0.5 font-semibold text-muted">
-                      Closed source
-                    </span>
-                  )}
-                  <span className="rounded-full border border-border bg-card px-2 py-0.5 text-muted">
-                    {endpoint.sources.length === 2 ? '2 sources' : endpoint.sources[0]}
-                  </span>
-                </div>
-              </div>
-              <CopyButton value={endpoint.url} label="Copy URL" />
-            </li>
-          );
-        })}
+      <ul className="mt-3 space-y-2">
+        {groupEndpoints.map((endpoint) => (
+          <EndpointRow key={endpoint.url} endpoint={endpoint} />
+        ))}
       </ul>
     </div>
+  );
+}
+
+function EndpointRow({ endpoint }: { endpoint: RpcEndpoint }) {
+  const tracking = describeTracking(endpoint.tracking);
+  const trackingTone =
+    tracking.tone === 'safe'
+      ? 'bg-green-50 text-safe'
+      : tracking.tone === 'caution'
+      ? 'bg-yellow-50 text-caution'
+      : tracking.tone === 'warning'
+      ? 'bg-red-50 text-critical'
+      : 'border border-border bg-card text-muted';
+
+  return (
+    <li className="flex flex-col gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="shrink-0 rounded border border-border bg-surface px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wider text-muted">
+            {endpoint.kind}
+          </span>
+          <code className="truncate font-mono text-xs text-text" title={endpoint.url}>
+            {endpoint.url}
+          </code>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 text-[0.6rem] uppercase tracking-wider">
+          <span
+            className={`rounded-full px-2 py-0.5 font-semibold ${trackingTone}`}
+            title={tracking.description}
+          >
+            {tracking.label}
+          </span>
+          {endpoint.isOpenSource === true && (
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-accent">
+              Open source
+            </span>
+          )}
+          {endpoint.isOpenSource === false && (
+            <span className="rounded-full border border-border bg-surface px-2 py-0.5 font-semibold text-muted">
+              Closed source
+            </span>
+          )}
+          {endpoint.sources.length > 0 && (
+            <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-muted">
+              {endpoint.sources.length === 2 ? '2 sources' : endpoint.sources[0]}
+            </span>
+          )}
+        </div>
+      </div>
+      <CopyButton value={endpoint.url} label="Copy URL" />
+    </li>
   );
 }
