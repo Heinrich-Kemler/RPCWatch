@@ -62,6 +62,9 @@ export type ProcessedChain = {
   publicRpcDetails: RpcEndpoint[];
   publicRpcCount: number;
   providerGroups: ProviderGroup[];
+  /** Anonymous-access providers only — the free/public operators. */
+  anonymousProviders: number;
+  /** Total distinct providers = anonymous + paid. Drives risk tier. */
   distinctProviders: number;
   riskLevel: RiskLevel;
   riskScore: number;
@@ -302,8 +305,9 @@ export function processChains(rawChains: RawChain[], checkedAt = new Date().toIS
       const rpcDetails = buildRpcDetailsFromUrls(rpc, ['ethereum-lists']);
       const publicRpcDetails = rpcDetails.filter((entry) => !entry.isTemplate);
       const providerGroups = providerGroupsFromDetails(publicRpcDetails);
-      const distinctProviders = providerGroups.length;
-      const riskScore = calculateRiskScore(distinctProviders);
+      const anonymousProviders = providerGroups.length;
+      // distinctProviders + riskLevel get finalised after key-gated
+      // providers are attached in the .map() below.
 
       return {
         chainId,
@@ -322,9 +326,10 @@ export function processChains(rawChains: RawChain[], checkedAt = new Date().toIS
         publicRpcDetails,
         publicRpcCount,
         providerGroups,
-        distinctProviders,
-        riskLevel: calculateRiskLevel(distinctProviders),
-        riskScore,
+        anonymousProviders,
+        distinctProviders: anonymousProviders,
+        riskLevel: calculateRiskLevel(anonymousProviders),
+        riskScore: calculateRiskScore(anonymousProviders),
         explorers: normalizeExplorers(rawChain.explorers),
         infoURL: normalizeString(rawChain.infoURL),
         isTestnet: isTestnetName(name),
@@ -341,6 +346,9 @@ export function processChains(rawChains: RawChain[], checkedAt = new Date().toIS
     .filter((chain): chain is ProcessedChain => chain !== null)
     .map((chain) => {
       chain.keyGatedProviders = keyGatedProvidersFor(chain);
+      chain.distinctProviders = chain.anonymousProviders + chain.keyGatedProviders.length;
+      chain.riskLevel = calculateRiskLevel(chain.distinctProviders);
+      chain.riskScore = calculateRiskScore(chain.distinctProviders);
       return chain;
     })
     .sort((left, right) => {
@@ -427,8 +435,7 @@ export function processMergedChains(
       const httpRpcs = rpcDetails.filter((entry) => entry.kind === 'http').map((entry) => entry.url);
       const publicRpcCount = publicRpcDetails.length;
       const providerGroups = providerGroupsFromDetails(publicRpcDetails);
-      const distinctProviders = providerGroups.length;
-      const riskScore = calculateRiskScore(distinctProviders);
+      const anonymousProviders = providerGroups.length;
       const isTestnet =
         typeof raw.isTestnetHint === 'boolean' ? raw.isTestnetHint : isTestnetName(name);
       // chainlist.org replicates mainnet TVL onto sibling testnet entries, so
@@ -466,9 +473,10 @@ export function processMergedChains(
         publicRpcDetails,
         publicRpcCount,
         providerGroups,
-        distinctProviders,
-        riskLevel: calculateRiskLevel(distinctProviders),
-        riskScore,
+        anonymousProviders,
+        distinctProviders: anonymousProviders,
+        riskLevel: calculateRiskLevel(anonymousProviders),
+        riskScore: calculateRiskScore(anonymousProviders),
         explorers: normalizeExplorers(raw.explorers ?? null),
         infoURL: normalizeString(raw.infoURL ?? null),
         isTestnet,
@@ -484,6 +492,9 @@ export function processMergedChains(
     })
     .map((chain) => {
       chain.keyGatedProviders = keyGatedProvidersFor(chain);
+      chain.distinctProviders = chain.anonymousProviders + chain.keyGatedProviders.length;
+      chain.riskLevel = calculateRiskLevel(chain.distinctProviders);
+      chain.riskScore = calculateRiskScore(chain.distinctProviders);
       return chain;
     })
     .sort((left, right) => {
@@ -547,7 +558,7 @@ export function processNonEvmSeeds(
         });
     }
     const providerGroups = Array.from(providerGroupsRaw.values());
-    const distinctProviders = providerGroups.length;
+    const anonymousProviders = providerGroups.length;
 
     let tvlUsd: number | null = null;
     let tvlSource: ProcessedChain['tvlSource'] = null;
@@ -576,9 +587,10 @@ export function processNonEvmSeeds(
       publicRpcDetails,
       publicRpcCount: publicRpcDetails.length,
       providerGroups,
-      distinctProviders,
-      riskLevel: calculateRiskLevel(distinctProviders),
-      riskScore: calculateRiskScore(distinctProviders),
+      anonymousProviders,
+      distinctProviders: anonymousProviders,
+      riskLevel: calculateRiskLevel(anonymousProviders),
+      riskScore: calculateRiskScore(anonymousProviders),
       explorers: [],
       infoURL: seed.infoURL,
       isTestnet: false,
@@ -593,6 +605,9 @@ export function processNonEvmSeeds(
     };
   }).map((chain) => {
     chain.keyGatedProviders = keyGatedProvidersFor(chain);
+    chain.distinctProviders = chain.anonymousProviders + chain.keyGatedProviders.length;
+    chain.riskLevel = calculateRiskLevel(chain.distinctProviders);
+    chain.riskScore = calculateRiskScore(chain.distinctProviders);
     return chain;
   });
 }

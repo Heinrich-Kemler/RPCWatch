@@ -83,17 +83,14 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
         return false;
       })
       .sort((left, right) => {
-        // 1. Pin notable names to the top
         if (left.isNotable !== right.isNotable) {
           return left.isNotable ? -1 : 1;
         }
-        // 2. Rank by TVL descending so high-stakes chains surface first
         const leftTvl = left.tvlUsd ?? 0;
         const rightTvl = right.tvlUsd ?? 0;
         if (leftTvl !== rightTvl) {
           return rightTvl - leftTvl;
         }
-        // 3. Break remaining ties by provider count (asc for danger tabs, desc for Safe)
         if (left.distinctProviders !== right.distinctProviders) {
           return safestFirst
             ? right.distinctProviders - left.distinctProviders
@@ -254,7 +251,7 @@ function Hero({
       <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTile label="Chains monitored" value={stats.total.toLocaleString()} tone="text" />
         <StatTile
-          label="Critical (1 provider)"
+          label="Critical (1 total provider)"
           value={stats.critical.toLocaleString()}
           tone="critical"
           sublabel={
@@ -262,14 +259,14 @@ function Hero({
           }
         />
         <StatTile
-          label="At risk (2–3)"
+          label="At risk (2–3 total)"
           value={stats.atRisk.toLocaleString()}
           tone="warning"
           sublabel={
             stats.atRiskTvl > 0 ? `${formatCompactUsd(stats.atRiskTvl)} TVL at risk` : undefined
           }
         />
-        <StatTile label="Well covered (4+)" value={stats.safe.toLocaleString()} tone="safe" />
+        <StatTile label="Well covered (4+ total)" value={stats.safe.toLocaleString()} tone="safe" />
       </div>
     </header>
   );
@@ -510,9 +507,10 @@ function TvlLeaderboard({ chains }: { chains: ProcessedChain[] }) {
         <div className="flex-1">
           <h2 className="text-xl font-semibold text-text">Single-provider chains by TVL</h2>
           <p className="mt-1 text-sm text-muted">
-            Chains with all public RPCs behind <span className="font-semibold text-text">one</span>{' '}
-            operator AND ≥ $1M on-chain value. If the provider goes offline, this much value loses
-            access to its own chain.
+            Chains with{' '}
+            <span className="font-semibold text-text">only one total provider</span> serving them
+            (free <em>or</em> paid) AND ≥ $1M on-chain value. If that provider goes offline, this
+            much value loses access to its own chain.
           </p>
         </div>
       </div>
@@ -686,14 +684,6 @@ function ChainRow({
                 All via {soleProvider.name}
               </Link>
             )}
-            {chain.keyGatedProviders.length > 0 && (
-              <span
-                className="rounded-full border border-yellow-200 bg-yellow-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-caution"
-                title={`Also available on ${chain.keyGatedProviders.length} paid / sign-up-required platform${chain.keyGatedProviders.length === 1 ? '' : 's'}`}
-              >
-                +{chain.keyGatedProviders.length} paid
-              </span>
-            )}
           </div>
         </div>
       </div>
@@ -706,13 +696,20 @@ function ChainRow({
       </div>
 
       <div>
-        <span className={`text-2xl font-semibold ${countStyle.text}`}>
-          {chain.distinctProviders}
-        </span>
-        <span className="ml-1 text-xs text-muted">{formatProviderLabel(chain.distinctProviders)}</span>
-        {chain.publicRpcCount !== chain.distinctProviders && chain.publicRpcCount > 0 && (
-          <span className="ml-1 text-[0.65rem] text-muted">({chain.publicRpcCount} URLs)</span>
-        )}
+        <div>
+          <span className={`text-2xl font-semibold ${countStyle.text}`}>
+            {chain.distinctProviders}
+          </span>
+          <span className="ml-1 text-xs text-muted">
+            {formatProviderLabel(chain.distinctProviders)}
+          </span>
+        </div>
+        <div className="mt-0.5 text-[0.65rem] text-muted">
+          {chain.anonymousProviders} free · {chain.keyGatedProviders.length} paid
+          {chain.publicRpcCount !== chain.anonymousProviders && chain.publicRpcCount > 0 && (
+            <> · {chain.publicRpcCount} URL{chain.publicRpcCount === 1 ? '' : 's'}</>
+          )}
+        </div>
       </div>
 
       <div>
@@ -732,7 +729,7 @@ function ChainRow({
         >
           {expanded
             ? 'Hide RPCs'
-            : `View ${chain.publicRpcCount} RPC${chain.publicRpcCount === 1 ? '' : 's'} · ${chain.distinctProviders} provider${chain.distinctProviders === 1 ? '' : 's'}`}
+            : `View ${chain.publicRpcCount} free URL${chain.publicRpcCount === 1 ? '' : 's'}`}
         </button>
         {expanded && (
           <ul className="space-y-1 text-xs">
@@ -793,21 +790,21 @@ function Methodology() {
       <div className="space-y-5 border-t border-border px-5 py-5 text-sm text-muted">
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
           <div className="font-semibold text-amber-900">
-            Two numbers, two different questions.
+            One total count, split into free and paid.
           </div>
           <p className="mt-1 text-amber-900/80">
-            <span className="font-semibold text-amber-900">Distinct providers</span> (the risk
-            tier) counts operators a stranger with no account can reach{' '}
-            <em>right now</em>. That&apos;s the &ldquo;if my wallet has no keys, how many
-            independent paths into this chain do I have?&rdquo; number. A chain relying on one
-            anonymous operator is a single point of failure for its users — no sign-up flow fixes
-            that.{' '}
-            <span className="font-semibold text-amber-900">
-              Paid / sign-up-required platforms
-            </span>{' '}
-            are listed separately on each chain page. They matter if you&apos;re a project
-            building on a chain and can pay for redundancy, which is a real security upgrade,
-            just not one that helps an anonymous wallet.
+            <span className="font-semibold text-amber-900">Total providers</span> is every
+            distinct operator that serves a chain — anonymous-access public RPCs{' '}
+            <em>plus</em> paid or sign-up-required platforms like QuickNode, Chainstack,
+            Alchemy, Infura, and so on. The risk tier is derived from this total because
+            that&apos;s the full real-world picture of redundancy. Below every provider count
+            we show the breakdown as{' '}
+            <span className="font-semibold text-amber-900">N free · M paid</span> so you can
+            see both layers: <em>free</em> tells you what a wallet with no account can reach,{' '}
+            <em>paid</em> tells you the commercial redundancy a project can buy. A chain with
+            1 free + 10 paid isn&apos;t safe for an anonymous wallet, but it&apos;s well-
+            covered for a project with a budget — the detail page makes that difference
+            explicit.
           </p>
         </div>
 

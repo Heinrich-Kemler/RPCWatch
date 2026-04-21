@@ -120,11 +120,12 @@ export default async function ChainDetailPage({ params }: PageProps) {
               <div className={`text-right text-4xl font-bold ${countStyle.text}`}>
                 {chain.distinctProviders}
                 <span className="ml-2 text-sm font-medium text-muted">
-                  provider{chain.distinctProviders === 1 ? '' : 's'}
+                  total provider{chain.distinctProviders === 1 ? '' : 's'}
                 </span>
               </div>
               <div className="text-right text-xs text-muted">
-                across {chain.publicRpcCount} public URL{chain.publicRpcCount === 1 ? '' : 's'}
+                {chain.anonymousProviders} free (anonymous) · {chain.keyGatedProviders.length}{' '}
+                paid / sign-up
               </div>
             </div>
           </div>
@@ -160,11 +161,12 @@ export default async function ChainDetailPage({ params }: PageProps) {
 
         <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-card">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
-            Endpoints grouped by provider
+            Free public endpoints, grouped by provider
           </h2>
           <p className="mt-1 text-xs text-muted">
-            URLs are grouped by the operator we identify them with. Multiple URLs under the same
-            provider represent the same operator — redundancy only counts at the provider level.
+            URLs that an anonymous client can reach without an API key, grouped by operator.
+            Multiple URLs under the same provider represent the same operator — redundancy only
+            counts at the provider level.
             {chain.templateRpcs.length > 0 && (
               <>
                 {' '}
@@ -458,7 +460,7 @@ function DependencyBlock({ chain }: { chain: ProcessedChain }) {
   return (
     <section className="mt-8 grid gap-4 sm:grid-cols-3">
       <StatCard
-        label="Distinct providers"
+        label="Total providers"
         value={chain.distinctProviders.toString()}
         tone={
           chain.distinctProviders === 0
@@ -469,10 +471,10 @@ function DependencyBlock({ chain }: { chain: ProcessedChain }) {
             ? 'warning'
             : 'safe'
         }
-        hint={chain.distinctProviders === 1 ? 'Single point of failure' : 'Operator-level redundancy'}
+        hint={`${chain.anonymousProviders} free · ${chain.keyGatedProviders.length} paid`}
       />
       <StatCard
-        label="Public URLs"
+        label="Free public URLs"
         value={chain.publicRpcCount.toString()}
         tone="neutral"
         hint={`${chain.templateRpcs.length} more require API keys`}
