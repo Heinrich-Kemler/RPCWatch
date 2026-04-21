@@ -1,4 +1,5 @@
 import { fetchDefiLlamaChains, resolveDefiLlamaTvl, type DefiLlamaIndex } from './defillama';
+import { discoveredRpcsForChain } from './discoveredRpcs';
 import { keyGatedProvidersFor, type KeyGatedProvider } from './keyGatedProviders';
 import { NON_EVM_SEED } from './nonEvmChains';
 import { isNotableChain } from './notableChains';
@@ -20,7 +21,7 @@ export type NativeCurrency = {
 
 export type RiskLevel = 'critical' | 'at-risk' | 'safe' | 'no-data';
 
-export type ChainSource = 'chainlist.org' | 'ethereum-lists';
+export type ChainSource = 'chainlist.org' | 'ethereum-lists' | 'rpc-watch-verified';
 export type RpcTracking = 'none' | 'limited' | 'yes' | 'unspecified' | 'unknown';
 export type RpcKind = 'http' | 'wss' | 'other';
 
@@ -427,7 +428,16 @@ export function processMergedChains(
       const shortName = normalizeString(raw.shortName, name.toLowerCase().replace(/\s+/g, '-'));
       const chainField = normalizeString(raw.chain, name);
 
-      const rpcDetails = raw.rpc.map<RpcEndpoint>((entry) => {
+      const seenUrls = new Set(raw.rpc.map((e) => e.url));
+      const discovered = discoveredRpcsForChain(chainId)
+        .filter((entry) => !seenUrls.has(entry.url))
+        .map<MergedRpcLike>((entry) => ({
+          url: entry.url,
+          sources: ['rpc-watch-verified'],
+        }));
+      const allRpcs = [...raw.rpc, ...discovered];
+
+      const rpcDetails = allRpcs.map<RpcEndpoint>((entry) => {
         const provider = identifyProvider(entry.url);
         return {
           url: entry.url,
@@ -501,7 +511,12 @@ export function processMergedChains(
         tvlUsd,
         tvlSource,
         keyGatedProviders: [],
-        sources: Array.from(new Set(raw.sources)) as ChainSource[],
+        sources: Array.from(
+          new Set<ChainSource>([
+            ...raw.sources,
+            ...(discovered.length > 0 ? ['rpc-watch-verified' as ChainSource] : []),
+          ]),
+        ) as ChainSource[],
         lastChecked: checkedAt,
       } as ProcessedChain;
     })
