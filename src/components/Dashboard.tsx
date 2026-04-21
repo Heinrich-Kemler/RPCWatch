@@ -109,15 +109,41 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
   );
 
   const stats = useMemo(() => {
-    const total = visibleUniverse.length;
-    const critical = visibleUniverse.filter((chain) => chain.distinctProviders === 1).length;
-    const atRisk = visibleUniverse.filter(
+    const criticalList = visibleUniverse.filter((chain) => chain.distinctProviders === 1);
+    const atRiskList = visibleUniverse.filter(
       (chain) => chain.distinctProviders >= 2 && chain.distinctProviders <= 3,
-    ).length;
-    const safe = visibleUniverse.filter((chain) => chain.distinctProviders >= 4).length;
-    const noData = visibleUniverse.filter((chain) => chain.distinctProviders === 0).length;
-    return { total, critical, atRisk, safe, noData };
+    );
+    const safeList = visibleUniverse.filter((chain) => chain.distinctProviders >= 4);
+    const sumTvl = (list: ProcessedChain[]): number =>
+      list.reduce((total, chain) => total + (chain.tvlUsd ?? 0), 0);
+    return {
+      total: visibleUniverse.length,
+      critical: criticalList.length,
+      criticalTvl: sumTvl(criticalList),
+      atRisk: atRiskList.length,
+      atRiskTvl: sumTvl(atRiskList),
+      safe: safeList.length,
+      noData: visibleUniverse.filter((chain) => chain.distinctProviders === 0).length,
+    };
   }, [visibleUniverse]);
+
+  const activeCount = useMemo(() => {
+    if (activeOnly) return visibleUniverse.length;
+    const nonDeprecatedMainnet = chains.filter((chain) => {
+      if (chain.isDeprecated) return false;
+      if (!showTestnets && chain.isTestnet) return false;
+      return true;
+    });
+    return nonDeprecatedMainnet.filter(isActive).length;
+  }, [chains, showTestnets, activeOnly, visibleUniverse]);
+
+  const totalUniverseCount = useMemo(() => {
+    return chains.filter((chain) => {
+      if (chain.isDeprecated) return false;
+      if (!showTestnets && chain.isTestnet) return false;
+      return true;
+    }).length;
+  }, [chains, showTestnets]);
 
   const criticalWithTvl = useMemo(() => {
     return visibleUniverse
@@ -159,6 +185,8 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
           activeOnly={activeOnly}
           setActiveOnly={setActiveOnly}
           universe={visibleUniverse}
+          activeCount={activeCount}
+          totalUniverseCount={totalUniverseCount}
         />
 
         {filter === 'critical' && criticalWithTvl.length > 0 && (
@@ -186,7 +214,15 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
 function Hero({
   stats,
 }: {
-  stats: { total: number; critical: number; atRisk: number; safe: number; noData: number };
+  stats: {
+    total: number;
+    critical: number;
+    criticalTvl: number;
+    atRisk: number;
+    atRiskTvl: number;
+    safe: number;
+    noData: number;
+  };
 }) {
   return (
     <header className="mb-10">
@@ -216,10 +252,24 @@ function Hero({
       </div>
 
       <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatTile label="Chains monitored" value={stats.total} tone="text" />
-        <StatTile label="Critical (1 RPC)" value={stats.critical} tone="critical" />
-        <StatTile label="At risk (2–3)" value={stats.atRisk} tone="warning" />
-        <StatTile label="Well covered (4+)" value={stats.safe} tone="safe" />
+        <StatTile label="Chains monitored" value={stats.total.toLocaleString()} tone="text" />
+        <StatTile
+          label="Critical (1 provider)"
+          value={stats.critical.toLocaleString()}
+          tone="critical"
+          sublabel={
+            stats.criticalTvl > 0 ? `${formatCompactUsd(stats.criticalTvl)} TVL at risk` : undefined
+          }
+        />
+        <StatTile
+          label="At risk (2–3)"
+          value={stats.atRisk.toLocaleString()}
+          tone="warning"
+          sublabel={
+            stats.atRiskTvl > 0 ? `${formatCompactUsd(stats.atRiskTvl)} TVL at risk` : undefined
+          }
+        />
+        <StatTile label="Well covered (4+)" value={stats.safe.toLocaleString()} tone="safe" />
       </div>
     </header>
   );
@@ -229,10 +279,12 @@ function StatTile({
   label,
   value,
   tone,
+  sublabel,
 }: {
   label: string;
-  value: number;
+  value: string;
   tone: 'critical' | 'warning' | 'safe' | 'text';
+  sublabel?: string;
 }) {
   const toneClass =
     tone === 'critical'
@@ -255,9 +307,10 @@ function StatTile({
   return (
     <div className={`rounded-2xl border ${borderClass} bg-card px-5 py-6 shadow-card`}>
       <div className="text-xs uppercase tracking-wider text-muted">{label}</div>
-      <div className={`mt-2 text-3xl font-semibold sm:text-4xl ${toneClass}`}>
-        {value.toLocaleString()}
-      </div>
+      <div className={`mt-2 text-3xl font-semibold sm:text-4xl ${toneClass}`}>{value}</div>
+      {sublabel && (
+        <div className={`mt-1 text-xs font-medium ${toneClass}`}>{sublabel}</div>
+      )}
     </div>
   );
 }
@@ -272,6 +325,8 @@ function SearchAndFilters({
   activeOnly,
   setActiveOnly,
   universe,
+  activeCount,
+  totalUniverseCount,
 }: {
   filter: FilterKey;
   setFilter: (key: FilterKey) => void;
@@ -282,6 +337,8 @@ function SearchAndFilters({
   activeOnly: boolean;
   setActiveOnly: (value: boolean) => void;
   universe: ProcessedChain[];
+  activeCount: number;
+  totalUniverseCount: number;
 }) {
   return (
     <section className="sticky top-0 z-10 -mx-6 mb-6 bg-bg/90 px-6 pb-4 pt-2 backdrop-blur">
@@ -298,7 +355,7 @@ function SearchAndFilters({
 
         <label
           className="flex shrink-0 items-center gap-2 text-sm text-muted"
-          title="Only show chains with >= $1M TVL on DefiLlama or on our notable-chain list. Dead chains are hidden."
+          title="Active = on our notable-chain list OR DefiLlama TVL >= $1M. Dead chains are hidden."
         >
           <input
             type="checkbox"
@@ -307,6 +364,10 @@ function SearchAndFilters({
             className="h-4 w-4 rounded border-border bg-card accent-accent"
           />
           Active chains only
+          <span className="font-mono text-xs text-text">
+            ({activeCount.toLocaleString()}
+            <span className="text-muted"> / {totalUniverseCount.toLocaleString()}</span>)
+          </span>
         </label>
 
         <label className="flex shrink-0 items-center gap-2 text-sm text-muted">
