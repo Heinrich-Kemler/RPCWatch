@@ -204,14 +204,16 @@ function Hero({
         RPC <span className="text-critical">Watch</span>
       </h1>
       <p className="mt-4 max-w-2xl text-lg text-muted">
-        Which blockchains are one outage away from going dark?{' '}
-        <Link
-          href="/providers"
-          className="whitespace-nowrap font-semibold text-accent hover:underline"
-        >
+        Which blockchains are one outage away from going dark?
+      </p>
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+        <Link href="/providers" className="font-semibold text-accent hover:underline">
           See who depends on whom →
         </Link>
-      </p>
+        <Link href="/changes" className="font-semibold text-accent hover:underline">
+          What changed in the last 30 days →
+        </Link>
+      </div>
 
       <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTile label="Chains monitored" value={stats.total} tone="text" />
