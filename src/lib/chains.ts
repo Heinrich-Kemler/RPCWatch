@@ -143,6 +143,7 @@ const TESTNET_PATTERNS = [
   /fuji/i,
   /chapel/i,
   /holesky/i,
+  /hoodi/i,
 ];
 const TEMPLATE_RPC_PATTERN = /\$\{[^}]+\}/;
 const HTTP_RPC_PATTERN = /^https?:\/\//i;

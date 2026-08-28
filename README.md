@@ -16,6 +16,11 @@ Data comes from **two community registries, merged**:
   — the raw registry behind chainlist.org, maintained by the
   [ethereum-lists/chains](https://github.com/ethereum-lists/chains)
   project.
+- **RPC Watch-verified probes** — anonymous endpoints we confirmed
+  ourselves (Pocket Network's keyless portal, aggregator slugs, official
+  mirrors) that neither registry has indexed yet. See
+  [`src/lib/discoveredRpcs.ts`](src/lib/discoveredRpcs.ts). Last deep
+  probe: 28 Aug 2026.
 
 We deduplicate by RPC URL and keep every endpoint either source has seen,
 so coverage is broader (and more resistant to any one registry being

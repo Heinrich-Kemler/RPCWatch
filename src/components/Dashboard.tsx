@@ -856,7 +856,13 @@ function Methodology() {
               </li>
               <li>
                 A hand-maintained seed file for non-EVM L1s (Solana, Sui, Aptos, Near, TON, Tron,
-                Stacks). Every URL in that file has been probed for anonymous access.
+                Stacks, Bitcoin, and others). Every URL in that file has been probed for
+                anonymous access.
+              </li>
+              <li>
+                RPC Watch-verified probes — extra anonymous endpoints we found that the two
+                registries have not indexed yet (Pocket Network public portal, aggregator
+                slugs, official mirrors). Last deep probe: 28 Aug 2026.
               </li>
             </ul>
           </div>

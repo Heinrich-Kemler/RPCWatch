@@ -3,6 +3,7 @@ node_modules
 .DS_Store
 tsconfig.tsbuildinfo
 .claude
+data/probe-*.json
 
 # env files — never commit. Keep .env.example tracked if we ever need a template.
 .env

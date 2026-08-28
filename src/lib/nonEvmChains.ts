@@ -5,7 +5,7 @@
  * depth, so we hard-code the chains and the public endpoints we have
  * manually verified respond anonymously (no API key, no sign-up).
  *
- * Verification notes (re-probed 2026-04-21):
+ * Verification notes (re-probed 2026-08-28):
  *   - Every URL below was probed with a chain-specific request and
  *     returned a valid response from an anonymous client.
  *   - QuickNode, Chainstack, Alchemy, Ankr, NOWNodes, and Helius
@@ -97,6 +97,11 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         operator: 'BlockEden',
         tracking: 'limited',
       },
+      {
+        url: 'https://solana.api.pocket.network',
+        operator: 'Pocket Network',
+        tracking: 'none',
+      },
     ],
   },
   {
@@ -127,6 +132,11 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
       {
         url: 'https://1rpc.io/sui',
         operator: '1RPC',
+        tracking: 'none',
+      },
+      {
+        url: 'https://sui.api.pocket.network',
+        operator: 'Pocket Network',
         tracking: 'none',
       },
     ],
@@ -198,6 +208,11 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
         operator: '1RPC',
         tracking: 'none',
       },
+      {
+        url: 'https://near.api.pocket.network',
+        operator: 'Pocket Network',
+        tracking: 'none',
+      },
     ],
   },
   {
@@ -255,6 +270,11 @@ export const NON_EVM_SEED: NonEvmChainSeed[] = [
       {
         url: 'https://tron-evm-rpc.publicnode.com',
         operator: 'PublicNode',
+        tracking: 'none',
+      },
+      {
+        url: 'https://tron.api.pocket.network',
+        operator: 'Pocket Network',
         tracking: 'none',
       },
     ],

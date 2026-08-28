@@ -100,6 +100,14 @@ const APEX_PROVIDERS: Record<string, ProviderDef> = {
   'xrplcluster.com': { name: 'XRPL Cluster', id: 'xrplcluster', kind: 'public-rpc-aggregator' },
   'ripple.com': { name: 'Ripple', id: 'ripple', kind: 'foundation' },
   'orbs.network': { name: 'Orbs TON Access', id: 'orbs', kind: 'public-rpc-aggregator' },
+  'nodeflare.app': { name: 'Nodeflare', id: 'nodeflare', kind: 'public-rpc-aggregator' },
+  'routeme.sh': { name: 'RouteMe', id: 'routeme', kind: 'public-rpc-aggregator' },
+  'swiftnodes.io': { name: 'SwiftNodes', id: 'swiftnodes', kind: 'public-rpc-aggregator' },
+  'huginn.tech': { name: 'Huginn', id: 'huginn', kind: 'public-rpc-aggregator' },
+  'originstake.com': { name: 'OriginStake', id: 'originstake', kind: 'public-rpc-aggregator' },
+  'spidernode.net': { name: 'SpiderNode', id: 'spidernode', kind: 'public-rpc-aggregator' },
+  'goldsky.com': { name: 'Goldsky', id: 'goldsky', kind: 'public-rpc-aggregator' },
+  'story-rpc.com': { name: 'Ankr', id: 'ankr', kind: 'public-rpc-aggregator' },
   // Chain-native / foundation endpoints
   'onflow.org': { name: 'Dapper Labs', id: 'dapper', kind: 'foundation' },
   'ic0.app': { name: 'DFINITY', id: 'dfinity', kind: 'foundation' },
@@ -111,6 +119,25 @@ const APEX_PROVIDERS: Record<string, ProviderDef> = {
   'vechain.org': { name: 'VeChain Foundation', id: 'vechain-foundation', kind: 'foundation' },
   'vechain.energy': { name: 'VeChain Energy (community)', id: 'vechain-energy', kind: 'other' },
   'veblocks.net': { name: 'VeBlocks', id: 'veblocks', kind: 'public-rpc-aggregator' },
+  'hyperliquid.xyz': { name: 'Hyperliquid Foundation', id: 'hyperliquid-foundation', kind: 'foundation' },
+  'hypurrscan.io': { name: 'Hypurrscan', id: 'hypurrscan', kind: 'other' },
+  'hyperlend.finance': { name: 'HyperLend', id: 'hyperlend', kind: 'other' },
+  'megaeth.com': { name: 'MegaETH Foundation', id: 'megaeth-foundation', kind: 'foundation' },
+  'unichain.org': { name: 'Uniswap Labs', id: 'uniswap-labs', kind: 'foundation' },
+  'soneium.org': { name: 'Soneium', id: 'soneium-foundation', kind: 'foundation' },
+  'inkonchain.com': { name: 'Ink', id: 'ink-foundation', kind: 'foundation' },
+  'storyrpc.io': { name: 'Story Foundation', id: 'story-foundation', kind: 'foundation' },
+  'datarpc.io': { name: 'Story Foundation', id: 'story-foundation', kind: 'foundation' },
+  'nibiru.fi': { name: 'Nibiru Foundation', id: 'nibiru-foundation', kind: 'foundation' },
+  'apechain.com': { name: 'ApeChain', id: 'apechain-foundation', kind: 'foundation' },
+  'abs.xyz': { name: 'Abstract', id: 'abstract-foundation', kind: 'foundation' },
+  'sophon.xyz': { name: 'Sophon', id: 'sophon-foundation', kind: 'foundation' },
+  'plasma.to': { name: 'Plasma Foundation', id: 'plasma-foundation', kind: 'foundation' },
+  'stable.xyz': { name: 'Stable Foundation', id: 'stable-foundation', kind: 'foundation' },
+  'tempo.xyz': { name: 'Tempo Foundation', id: 'tempo-foundation', kind: 'foundation' },
+  'tac.build': { name: 'TAC Foundation', id: 'tac-foundation', kind: 'foundation' },
+  'monadinfra.com': { name: 'Monad Foundation', id: 'monad-foundation', kind: 'foundation' },
+  'monad.xyz': { name: 'Monad Foundation', id: 'monad-foundation', kind: 'foundation' },
 
   // Rollup-as-a-service — every rollup they host shares this infra.
   'conduit.xyz': { name: 'Conduit', id: 'conduit', kind: 'rollup-infra' },
@@ -144,6 +171,37 @@ const SUBDOMAIN_OVERRIDES: Array<{ pattern: RegExp; provider: ProviderDef }> = [
   {
     pattern: /(^|\.)g\.alchemy\.com$/i,
     provider: APEX_PROVIDERS['alchemy.com'],
+  },
+  // Official Monad public mirrors are branded monad.xyz but run by different operators.
+  // https://docs.monad.xyz/developer-essentials/network-information
+  {
+    pattern: /^rpc\.monad\.xyz$/i,
+    provider: APEX_PROVIDERS['quiknode.pro'],
+  },
+  {
+    pattern: /^rpc1\.monad\.xyz$/i,
+    provider: APEX_PROVIDERS['alchemy.com'],
+  },
+  {
+    pattern: /^rpc2\.monad\.xyz$/i,
+    provider: APEX_PROVIDERS['goldsky.com'],
+  },
+  {
+    pattern: /^rpc3\.monad\.xyz$/i,
+    provider: APEX_PROVIDERS['ankr.com'],
+  },
+  {
+    pattern: /^rpc-mainnet\.monadinfra\.com$/i,
+    provider: APEX_PROVIDERS['monadinfra.com'],
+  },
+  // Ink official hosts: Gelato + QuickNode branded paths on the same apex.
+  {
+    pattern: /^rpc-gel\.inkonchain\.com$/i,
+    provider: APEX_PROVIDERS['gelato.digital'],
+  },
+  {
+    pattern: /^rpc-qnd\.inkonchain\.com$/i,
+    provider: APEX_PROVIDERS['quiknode.pro'],
   },
 ];
 
