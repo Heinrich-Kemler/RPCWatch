@@ -60,6 +60,33 @@ export const notableChains: Set<number> = new Set([
   50104, // Sophon
   61166, // Treasure
   333999, // Polis Mainnet
+  // LayerZero-connected names people actually recognise
+  14, // Flare
+  30, // Rootstock
+  196, // OKX X Layer
+  204, // opBNB
+  252, // Fraxtal
+  747, // Flow EVM
+  1030, // Conflux eSpace
+  1088, // Metis
+  1116, // Core
+  1135, // Lisk
+  1625, // Gravity
+  1729, // Reya
+  1776, // Injective EVM
+  2818, // Morph
+  34443, // Mode
+  4153, // RISE
+  4200, // Merlin
+  42793, // Etherlink
+  4663, // Robinhood Chain
+  5031, // Somnia
+  60808, // BOB
+  6714, // ANUBIS
+  8217, // Kaia
+  10088, // Gate Layer
+  1313161554, // Aurora
+  5064014, // Ethereal (Ethena)
 ]);
 
 export function isNotableChain(chainId: number): boolean {

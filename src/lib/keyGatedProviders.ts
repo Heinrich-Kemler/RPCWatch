@@ -198,6 +198,7 @@ export const KEY_GATED_PROVIDERS: KeyGatedProvider[] = [
       EVM.avalanche, EVM.bnb, EVM.celo, EVM.zora, EVM.soneium, EVM.abstract,
       EVM.ink, EVM.unichain, EVM.worldChain, EVM.apechain, EVM.monad,
       EVM.mode, EVM.megaeth, EVM.story, EVM.hyperEvm,
+      EVM.citrea,
       NONEVM.solana,
     ],
   },

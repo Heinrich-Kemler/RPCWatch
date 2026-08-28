@@ -50,7 +50,8 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
   const [filter, setFilter] = useState<FilterKey>('critical');
   const [query, setQuery] = useState('');
   const [showTestnets, setShowTestnets] = useState(false);
-  const [activeOnly, setActiveOnly] = useState(false);
+  const [activeOnly, setActiveOnly] = useState(true);
+  const [layerZeroOnly, setLayerZeroOnly] = useState(true);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
   const isActive = (chain: ProcessedChain): boolean =>
@@ -62,9 +63,10 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
         if (chain.isDeprecated) return false;
         if (!showTestnets && chain.isTestnet) return false;
         if (activeOnly && !isActive(chain)) return false;
+        if (layerZeroOnly && !chain.isLayerZero) return false;
         return true;
       }),
-    [chains, showTestnets, activeOnly],
+    [chains, showTestnets, activeOnly, layerZeroOnly],
   );
 
   const filtered = useMemo(() => {
@@ -163,6 +165,20 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
     return [...notable, ...extras];
   }, [criticalChains]);
 
+  const layerZeroOneFreeRpc = useMemo(() => {
+    return visibleUniverse
+      .filter(
+        (chain) =>
+          chain.isLayerZero &&
+          chain.anonymousProviders === 1 &&
+          (chain.isNotable || (chain.tvlUsd !== null && chain.tvlUsd >= SIGNIFICANT_TVL_USD)),
+      )
+      .sort((left, right) => {
+        if (left.isNotable !== right.isNotable) return left.isNotable ? -1 : 1;
+        return (right.tvlUsd ?? 0) - (left.tvlUsd ?? 0);
+      });
+  }, [visibleUniverse]);
+
   return (
     <main className="min-h-screen bg-bg text-text">
       <div className="mx-auto w-full max-w-6xl px-6 py-12 sm:py-16">
@@ -181,10 +197,17 @@ export default function Dashboard({ chains, summary }: DashboardProps) {
           setShowTestnets={setShowTestnets}
           activeOnly={activeOnly}
           setActiveOnly={setActiveOnly}
+          layerZeroOnly={layerZeroOnly}
+          setLayerZeroOnly={setLayerZeroOnly}
           universe={visibleUniverse}
           activeCount={activeCount}
           totalUniverseCount={totalUniverseCount}
+          layerZeroCount={chains.filter((chain) => chain.isLayerZero && !chain.isDeprecated && (showTestnets || !chain.isTestnet)).length}
         />
+
+        {layerZeroOneFreeRpc.length > 0 && (
+          <LayerZeroSingleRpcCallout chains={layerZeroOneFreeRpc} />
+        )}
 
         {filter === 'critical' && criticalWithTvl.length > 0 && (
           <TvlLeaderboard chains={criticalWithTvl} />
@@ -246,6 +269,10 @@ function Hero({
         <Link href="/changes" className="font-semibold text-accent hover:underline">
           What changed in the last 30 days →
         </Link>
+        <span className="text-muted">
+          LayerZero-connected chains are tagged. Toggle the filter to see which familiar
+          omnichain networks still have only one public RPC.
+        </span>
       </div>
 
       <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -321,9 +348,12 @@ function SearchAndFilters({
   setShowTestnets,
   activeOnly,
   setActiveOnly,
+  layerZeroOnly,
+  setLayerZeroOnly,
   universe,
   activeCount,
   totalUniverseCount,
+  layerZeroCount,
 }: {
   filter: FilterKey;
   setFilter: (key: FilterKey) => void;
@@ -333,9 +363,12 @@ function SearchAndFilters({
   setShowTestnets: (value: boolean) => void;
   activeOnly: boolean;
   setActiveOnly: (value: boolean) => void;
+  layerZeroOnly: boolean;
+  setLayerZeroOnly: (value: boolean) => void;
   universe: ProcessedChain[];
   activeCount: number;
   totalUniverseCount: number;
+  layerZeroCount: number;
 }) {
   return (
     <section className="sticky top-0 z-10 -mx-6 mb-6 bg-bg/90 px-6 pb-4 pt-2 backdrop-blur">
@@ -365,6 +398,20 @@ function SearchAndFilters({
             ({activeCount.toLocaleString()}
             <span className="text-muted"> / {totalUniverseCount.toLocaleString()}</span>)
           </span>
+        </label>
+
+        <label
+          className="flex shrink-0 items-center gap-2 text-sm text-muted"
+          title="Only chains LayerZero lists as ACTIVE mainnet endpoints"
+        >
+          <input
+            type="checkbox"
+            checked={layerZeroOnly}
+            onChange={(event) => setLayerZeroOnly(event.target.checked)}
+            className="h-4 w-4 rounded border-border bg-card accent-accent"
+          />
+          LayerZero only
+          <span className="font-mono text-xs text-text">({layerZeroCount.toLocaleString()})</span>
         </label>
 
         <label className="flex shrink-0 items-center gap-2 text-sm text-muted">
@@ -493,6 +540,78 @@ function CriticalCallout({
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+function LayerZeroSingleRpcCallout({ chains }: { chains: ProcessedChain[] }) {
+  return (
+    <section className="mb-6 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-card shadow-card">
+      <div className="flex items-start gap-3 px-6 pt-6">
+        <span className="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
+          LZ
+        </span>
+        <div className="flex-1">
+          <h2 className="text-xl font-semibold text-text">
+            LayerZero chains with only one public RPC
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Familiar or high-TVL networks that LayerZero actually routes through, but a normal
+            wallet can only reach via <span className="font-semibold text-text">one free
+            operator</span>. Paid platforms may still exist — the number that matters for a
+            human using MetaMask without an API key is this free count. If that one RPC lies
+            about a balance or a Stargate / OFT quote, the user signs the wrong thing.
+          </p>
+        </div>
+      </div>
+      <ol className="mt-4 divide-y divide-border border-t border-indigo-100">
+        {chains.map((chain) => {
+          const provider = chain.providerGroups[0];
+          return (
+            <li
+              key={chain.chainId}
+              className="grid grid-cols-[1fr_auto] items-center gap-3 px-6 py-3 text-sm sm:grid-cols-[1.6fr_1fr_auto]"
+            >
+              <div className="min-w-0">
+                <Link
+                  href={`/chain/${chain.chainId}`}
+                  className="block truncate font-semibold text-text hover:text-indigo-700"
+                >
+                  {chain.name}
+                </Link>
+                <div className="text-xs text-muted">
+                  {chain.isNonEvm ? chain.arch : `chain ${chain.chainId}`}
+                  {chain.layerZero?.chainKey ? ` · lz:${chain.layerZero.chainKey}` : ''}
+                </div>
+              </div>
+              <div className="hidden min-w-0 text-xs text-muted sm:block">
+                Sole free RPC:{' '}
+                {provider ? (
+                  <Link
+                    href={`/provider/${encodeURIComponent(provider.id)}`}
+                    className="font-medium text-text hover:underline"
+                  >
+                    {provider.name}
+                  </Link>
+                ) : (
+                  '—'
+                )}
+              </div>
+              <div className="whitespace-nowrap text-right text-xs font-semibold text-critical">
+                1 free
+                {chain.keyGatedProviders.length > 0 && (
+                  <span className="ml-1 font-medium text-muted">
+                    · {chain.keyGatedProviders.length} paid
+                  </span>
+                )}
+                {chain.tvlUsd !== null && chain.tvlUsd >= SIGNIFICANT_TVL_USD && (
+                  <span className="ml-2 text-safe">{formatCompactUsd(chain.tvlUsd)}</span>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }
@@ -647,6 +766,18 @@ function ChainRow({
             {chain.isNotable && (
               <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-accent">
                 Notable
+              </span>
+            )}
+            {chain.isLayerZero && (
+              <span
+                className="rounded-full bg-indigo-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-indigo-700"
+                title={
+                  chain.layerZero
+                    ? `LayerZero ${chain.layerZero.status}${chain.layerZero.eid ? ` · eid ${chain.layerZero.eid}` : ''}`
+                    : 'LayerZero'
+                }
+              >
+                LayerZero
               </span>
             )}
             {chain.isTestnet && (
@@ -864,6 +995,18 @@ function Methodology() {
                 registries have not indexed yet (Pocket Network public portal, aggregator
                 slugs, official mirrors). Last deep probe: 28 Aug 2026.
               </li>
+              <li>
+                <a
+                  href="https://metadata.layerzero-api.com/v1/metadata"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  LayerZero endpoint metadata
+                </a>{' '}
+                — which chains are actually omnichain-connected, plus the RPC URLs LayerZero
+                itself publishes. We merge those URLs and tag ACTIVE mainnets.
+              </li>
             </ul>
           </div>
           <div>
@@ -1059,6 +1202,16 @@ function Disclaimer({ summary }: { summary: SourceFetchSummary }) {
             Plus{' '}
             <span className="font-medium text-text">{summary.nonEvmSeedCount} non-EVM</span>{' '}
             seed chains.
+          </>
+        )}
+        {typeof summary.layerZeroActiveCount === 'number' && summary.layerZeroActiveCount > 0 && (
+          <>
+            {' '}
+            LayerZero metadata tags{' '}
+            <span className="font-medium text-text">
+              {summary.layerZeroActiveCount.toLocaleString()} active mainnets
+            </span>
+            .
           </>
         )}{' '}
         Sources are community-maintained and can lag reality — always verify with the project

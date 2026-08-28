@@ -233,6 +233,9 @@ export type SourceFetchSummary = {
   defillamaAvailable?: boolean;
   defillamaChainCount?: number;
   nonEvmSeedCount?: number;
+  layerZeroAvailable?: boolean;
+  layerZeroMainnetCount?: number;
+  layerZeroActiveCount?: number;
 };
 
 export async function fetchMergedRawChains(

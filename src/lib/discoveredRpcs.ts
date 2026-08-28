@@ -15,6 +15,8 @@
  * Last deep probe: 2026-08-28
  *   - Re-verified the April 2026 set (Nibiru PublicNode went 404; removed)
  *   - Added Pocket Network public portal + aggregator/official gaps
+ *   - LayerZero thin-coverage pass: AltLayer on OpenLedger, QuickNode/thirdweb
+ *     on Morph/Reya/Flow/Hemi, dRPC on Robinhood, Sophon official alt host
  *
  * To add a new entry:
  *   1. Probe with: curl -X POST <url> -H 'content-type: application/json'
@@ -705,6 +707,56 @@ export const DISCOVERED_RPCS: DiscoveredRpc[] = [
     url: 'https://xrplevm.api.pocket.network',
     verifiedAt: '2026-08-28',
     note: 'Pocket Network public portal — keyless as of 2026-08; eth_chainId 1440000',
+  },
+  // LayerZero thin-coverage follow-up (2026-08-28): extra operators
+  // confirmed anonymously on familiar / high-TVL omnichain networks.
+  {
+    chainId: 747,
+    url: 'https://747.rpc.thirdweb.com',
+    verifiedAt: '2026-08-28',
+    note: 'thirdweb public chain-id URL — anonymous eth_chainId 747',
+  },
+  {
+    chainId: 1612,
+    url: 'https://openledger-mainnet.alt.technology',
+    verifiedAt: '2026-08-28',
+    note: 'AltLayer sequencer RPC — second independent operator on OpenLedger',
+  },
+  {
+    chainId: 1729,
+    url: 'https://1729.rpc.thirdweb.com',
+    verifiedAt: '2026-08-28',
+    note: 'thirdweb public chain-id URL — anonymous eth_chainId 1729',
+  },
+  {
+    chainId: 2818,
+    url: 'https://rpc-quicknode.morph.network',
+    verifiedAt: '2026-08-28',
+    note: 'QuickNode-branded Morph public endpoint (distinct from morphl2.io foundation)',
+  },
+  {
+    chainId: 2818,
+    url: 'https://2818.rpc.thirdweb.com',
+    verifiedAt: '2026-08-28',
+    note: 'thirdweb public chain-id URL — anonymous eth_chainId 2818',
+  },
+  {
+    chainId: 4663,
+    url: 'https://robinhood.drpc.org',
+    verifiedAt: '2026-08-28',
+    note: 'dRPC public slug missing from both registries',
+  },
+  {
+    chainId: 43111,
+    url: 'https://43111.rpc.thirdweb.com',
+    verifiedAt: '2026-08-28',
+    note: 'thirdweb public chain-id URL — anonymous eth_chainId 43111',
+  },
+  {
+    chainId: 50104,
+    url: 'https://rpc.sophonapi.com',
+    verifiedAt: '2026-08-28',
+    note: 'Sophon official alternate hostname listed in docs',
   },
 ];
 

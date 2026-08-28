@@ -9,3 +9,4 @@ data/probe-*.json
 .env
 .env.*
 !.env.example
+.vercel

@@ -6,7 +6,7 @@ RPC Watch is a public security dashboard that counts the public RPC
 endpoints listed for every known EVM chain and flags the ones that rely on
 a single point of failure.
 
-Data comes from **two community registries, merged**:
+Data comes from **four sources, merged**:
 
 - **[chainlist.org/rpcs.json](https://chainlist.org/rpcs.json)** — per-RPC
   privacy (`tracking: none / limited / yes`), open-source flag per RPC,
@@ -21,6 +21,10 @@ Data comes from **two community registries, merged**:
   mirrors) that neither registry has indexed yet. See
   [`src/lib/discoveredRpcs.ts`](src/lib/discoveredRpcs.ts). Last deep
   probe: 28 Aug 2026.
+- **[LayerZero endpoint metadata](https://metadata.layerzero-api.com/v1/metadata)**
+  — which chains are actually omnichain-connected, plus the RPC URLs
+  LayerZero publishes. ACTIVE mainnets are tagged in the UI so you can
+  isolate familiar LayerZero networks that still have only one public RPC.
 
 We deduplicate by RPC URL and keep every endpoint either source has seen,
 so coverage is broader (and more resistant to any one registry being
@@ -66,8 +70,9 @@ familiar names aren't buried underneath long-tail rollups.
 
 ## Important disclaimer — our data sources
 
-**RPC Watch pulls from two community registries and merges them.** Both
-are community-maintained; neither is authoritative.
+**RPC Watch merges two community registries, our own probes, and
+LayerZero's endpoint metadata.** The registries are community-maintained;
+neither is authoritative.
 
 - [chainlist.org/rpcs.json](https://chainlist.org/rpcs.json) — the list
   powering [chainlist.org](https://chainlist.org/), maintained by
