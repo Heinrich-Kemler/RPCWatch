@@ -1,6 +1,13 @@
 import { fetchDefiLlamaChains, resolveDefiLlamaTvl, type DefiLlamaIndex } from './defillama';
 import { discoveredRpcsForChain } from './discoveredRpcs';
 import { keyGatedProvidersFor, type KeyGatedProvider } from './keyGatedProviders';
+import {
+  fetchLayerZeroIndex,
+  layerZeroForEvm,
+  layerZeroForNonEvm,
+  type LayerZeroChainInfo,
+  type LayerZeroIndex,
+} from './layerzero';
 import { NON_EVM_SEED } from './nonEvmChains';
 import { isNotableChain } from './notableChains';
 import { groupByProvider, identifyProvider, type ResolvedProvider } from './providers';
@@ -21,7 +28,13 @@ export type NativeCurrency = {
 
 export type RiskLevel = 'critical' | 'at-risk' | 'safe' | 'no-data';
 
-export type ChainSource = 'chainlist.org' | 'ethereum-lists' | 'rpc-watch-verified';
+export type ChainSource = 'chainlist.org' | 'ethereum-lists' | 'rpc-watch-verified' | 'layerzero';
+
+export type LayerZeroTag = {
+  chainKey: string;
+  status: LayerZeroChainInfo['status'];
+  eid: number | null;
+};
 export type RpcTracking = 'none' | 'limited' | 'yes' | 'unspecified' | 'unknown';
 export type RpcKind = 'http' | 'wss' | 'other';
 
@@ -90,6 +103,8 @@ export type ProcessedChain = {
   isDeprecated: boolean;
   isNotable: boolean;
   isNonEvm: boolean;
+  isLayerZero: boolean;
+  layerZero: LayerZeroTag | null;
   tvlUsd: number | null;
   tvlSource: 'defillama' | 'chainlist' | null;
   keyGatedProviders: KeyGatedProvider[];
@@ -143,6 +158,7 @@ const TESTNET_PATTERNS = [
   /fuji/i,
   /chapel/i,
   /holesky/i,
+  /hoodi/i,
 ];
 const TEMPLATE_RPC_PATTERN = /\$\{[^}]+\}/;
 const HTTP_RPC_PATTERN = /^https?:\/\//i;
@@ -352,6 +368,8 @@ export function processChains(rawChains: RawChain[], checkedAt = new Date().toIS
         isDeprecated: isDeprecatedChain(name, chainId),
         isNotable: isNotableChain(chainId),
         isNonEvm: false,
+        isLayerZero: false,
+        layerZero: null,
         tvlUsd: null,
         tvlSource: null,
         keyGatedProviders: [],
@@ -416,10 +434,16 @@ type MergedRawLike = {
   sources: ChainSource[];
 };
 
+function layerZeroTag(info: LayerZeroChainInfo | null): LayerZeroTag | null {
+  if (!info) return null;
+  return { chainKey: info.chainKey, status: info.status, eid: info.eid };
+}
+
 export function processMergedChains(
   merged: MergedRawLike[],
   checkedAt = new Date().toISOString(),
   defillamaIndex?: DefiLlamaIndex,
+  layerZeroIndex?: LayerZeroIndex,
 ): ProcessedChain[] {
   return merged
     .map((raw) => {
@@ -435,7 +459,16 @@ export function processMergedChains(
           url: entry.url,
           sources: ['rpc-watch-verified'],
         }));
-      const allRpcs = [...raw.rpc, ...discovered];
+      for (const entry of discovered) seenUrls.add(entry.url);
+
+      const layerZero = layerZeroForEvm(layerZeroIndex, chainId);
+      const layerZeroRpcs = (layerZero?.rpcs ?? [])
+        .filter((url) => !seenUrls.has(url))
+        .map<MergedRpcLike>((url) => ({
+          url,
+          sources: ['layerzero'],
+        }));
+      const allRpcs = [...raw.rpc, ...discovered, ...layerZeroRpcs];
 
       const rpcDetails = allRpcs.map<RpcEndpoint>((entry) => {
         const provider = identifyProvider(entry.url);
@@ -508,6 +541,8 @@ export function processMergedChains(
         isDeprecated: isDeprecatedChain(name, chainId),
         isNotable: isNotableChain(chainId),
         isNonEvm: false,
+        isLayerZero: layerZero !== null && layerZero.status === 'ACTIVE',
+        layerZero: layerZeroTag(layerZero),
         tvlUsd,
         tvlSource,
         keyGatedProviders: [],
@@ -515,6 +550,7 @@ export function processMergedChains(
           new Set<ChainSource>([
             ...raw.sources,
             ...(discovered.length > 0 ? ['rpc-watch-verified' as ChainSource] : []),
+            ...(layerZeroRpcs.length > 0 ? ['layerzero' as ChainSource] : []),
           ]),
         ) as ChainSource[],
         lastChecked: checkedAt,
@@ -545,8 +581,13 @@ export function processMergedChains(
 export function processNonEvmSeeds(
   checkedAt = new Date().toISOString(),
   defillamaIndex?: DefiLlamaIndex,
+  layerZeroIndex?: LayerZeroIndex,
 ): ProcessedChain[] {
   return NON_EVM_SEED.map<ProcessedChain>((seed) => {
+    const layerZero = layerZeroForNonEvm(layerZeroIndex, seed.shortName);
+    const seedUrls = new Set(seed.rpcs.map((entry) => entry.url));
+    const extraLz = (layerZero?.rpcs ?? []).filter((url) => !seedUrls.has(url));
+
     const rpcDetails: RpcEndpoint[] = seed.rpcs.map((entry) => {
       const fromMap = identifyProvider(entry.url);
       // Seed operators are authoritative: if the map returns unknown but
@@ -571,6 +612,21 @@ export function processNonEvmSeeds(
         providerVerified: provider.verified,
       };
     });
+
+    for (const url of extraLz) {
+      const provider = identifyProvider(url);
+      rpcDetails.push({
+        url,
+        kind: classifyRpcKind(url),
+        isTemplate: isTemplateRpc(url),
+        tracking: 'unknown',
+        isOpenSource: null,
+        sources: ['layerzero'],
+        providerId: provider.id,
+        providerName: provider.name,
+        providerVerified: provider.verified,
+      });
+    }
 
     const publicRpcDetails = rpcDetails.filter((entry) => !entry.isTemplate);
     const publicRpcs = publicRpcDetails.map((entry) => entry.url);
@@ -627,10 +683,12 @@ export function processNonEvmSeeds(
       isDeprecated: false,
       isNotable: true,
       isNonEvm: true,
+      isLayerZero: layerZero !== null && layerZero.status === 'ACTIVE',
+      layerZero: layerZeroTag(layerZero),
       tvlUsd,
       tvlSource,
       keyGatedProviders: [],
-      sources: ['non-evm-seed'],
+      sources: extraLz.length > 0 ? ['non-evm-seed', 'layerzero'] : ['non-evm-seed'],
       lastChecked: checkedAt,
     };
   }).map((chain) => {
@@ -669,9 +727,10 @@ export async function getProcessedChains(init?: FetchWithNextCacheInit): Promise
 }
 
 export async function getProcessedChainBundle(init?: FetchWithNextCacheInit) {
-  const [mergedResult, defillamaResult] = await Promise.allSettled([
+  const [mergedResult, defillamaResult, layerZeroResult] = await Promise.allSettled([
     fetchMergedRawChains(init),
     fetchDefiLlamaChains(),
+    fetchLayerZeroIndex(init),
   ]);
 
   if (mergedResult.status === 'rejected') {
@@ -683,9 +742,11 @@ export async function getProcessedChainBundle(init?: FetchWithNextCacheInit) {
   const { chains: rawChains, summary } = mergedResult.value;
   const defillamaIndex =
     defillamaResult.status === 'fulfilled' ? defillamaResult.value : undefined;
+  const layerZeroIndex =
+    layerZeroResult.status === 'fulfilled' ? layerZeroResult.value : undefined;
 
-  const evmChains = processMergedChains(rawChains, undefined, defillamaIndex);
-  const nonEvmChains = processNonEvmSeeds(undefined, defillamaIndex);
+  const evmChains = processMergedChains(rawChains, undefined, defillamaIndex, layerZeroIndex);
+  const nonEvmChains = processNonEvmSeeds(undefined, defillamaIndex, layerZeroIndex);
 
   // Non-EVM seed entries always go at the top of their risk tier because
   // they are hand-curated and authoritative.
@@ -696,6 +757,9 @@ export async function getProcessedChainBundle(init?: FetchWithNextCacheInit) {
     defillamaAvailable: defillamaResult.status === 'fulfilled',
     defillamaChainCount: defillamaResult.status === 'fulfilled' ? defillamaResult.value.byChainId.size : 0,
     nonEvmSeedCount: nonEvmChains.length,
+    layerZeroAvailable: layerZeroResult.status === 'fulfilled',
+    layerZeroMainnetCount: layerZeroIndex?.mainnetCount ?? 0,
+    layerZeroActiveCount: layerZeroIndex?.activeCount ?? 0,
   };
 
   return { chains, summary: enrichedSummary };

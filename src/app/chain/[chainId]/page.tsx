@@ -81,6 +81,11 @@ export default async function ChainDetailPage({ params }: PageProps) {
                     Notable
                   </span>
                 )}
+                {chain.isLayerZero && (
+                  <span className="rounded-full bg-indigo-50 px-2.5 py-1 font-semibold uppercase tracking-wider text-indigo-700">
+                    LayerZero{chain.layerZero?.chainKey ? ` · ${chain.layerZero.chainKey}` : ''}
+                  </span>
+                )}
                 {chain.isTestnet && (
                   <span className="rounded-full border border-border bg-surface px-2.5 py-1 uppercase tracking-wider">
                     Testnet

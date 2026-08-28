@@ -13,7 +13,7 @@
  * omit — under-crediting is safer than over-crediting. To add a chain
  * for a provider, cite the provider's own docs page in the PR.
  *
- * Sources last re-checked 2026-04:
+ * Sources last re-checked 2026-08:
  *   - QuickNode:   https://www.quicknode.com/chains
  *   - Chainstack:  https://chainstack.com/protocols/
  *   - Alchemy:     https://www.alchemy.com/chain-connect
@@ -61,6 +61,8 @@ const EVM = {
   gnosis: 'evm:100',
   unichain: 'evm:130',
   monad: 'evm:143',
+  hyperEvm: 'evm:999',
+  story: 'evm:1514',
   polygon: 'evm:137',
   sonic: 'evm:146',
   mantaPacific: 'evm:169',
@@ -163,6 +165,7 @@ export const KEY_GATED_PROVIDERS: KeyGatedProvider[] = [
       EVM.flare, EVM.rootstock, EVM.xLayer, EVM.pulsechain, EVM.kava,
       EVM.algorand, EVM.hedera, EVM.plasma, EVM.movement, EVM.tronEvm,
       EVM.conflux, EVM.injective, EVM.bob, EVM.etherlink,
+      EVM.megaeth, EVM.hyperEvm, EVM.story, EVM.monad,
       ...NONEVM_ALL,
     ],
   },
@@ -178,7 +181,7 @@ export const KEY_GATED_PROVIDERS: KeyGatedProvider[] = [
       EVM.abstract, EVM.ink, EVM.unichain, EVM.kaia, EVM.metis,
       EVM.apechain, EVM.taiko, EVM.immutable, EVM.celo, EVM.flare,
       EVM.rootstock, EVM.xLayer, EVM.kava, EVM.hedera, EVM.tronEvm,
-      EVM.injective, EVM.conflux,
+      EVM.injective, EVM.conflux, EVM.megaeth, EVM.hyperEvm, EVM.story, EVM.monad,
       NONEVM.solana, NONEVM.sui, NONEVM.aptos, NONEVM.ton, NONEVM.tron, NONEVM.near,
     ],
   },
@@ -194,7 +197,8 @@ export const KEY_GATED_PROVIDERS: KeyGatedProvider[] = [
       EVM.mantaPacific, EVM.berachain, EVM.sonic, EVM.mantle, EVM.gnosis,
       EVM.avalanche, EVM.bnb, EVM.celo, EVM.zora, EVM.soneium, EVM.abstract,
       EVM.ink, EVM.unichain, EVM.worldChain, EVM.apechain, EVM.monad,
-      EVM.mode,
+      EVM.mode, EVM.megaeth, EVM.story, EVM.hyperEvm,
+      EVM.citrea,
       NONEVM.solana,
     ],
   },
@@ -226,6 +230,7 @@ export const KEY_GATED_PROVIDERS: KeyGatedProvider[] = [
       EVM.flare, EVM.rootstock, EVM.xLayer, EVM.pulsechain, EVM.kava,
       EVM.algorand, EVM.hedera, EVM.plasma, EVM.tronEvm, EVM.aurora,
       EVM.conflux, EVM.injective, EVM.bob, EVM.rollux, EVM.etherlink,
+      EVM.megaeth, EVM.hyperEvm, EVM.story, EVM.monad,
       ...NONEVM_ALL,
     ],
   },
@@ -239,7 +244,7 @@ export const KEY_GATED_PROVIDERS: KeyGatedProvider[] = [
       EVM.ethereum, EVM.optimism, EVM.bnb, EVM.polygon, EVM.fantom,
       EVM.base, EVM.arbitrum, EVM.avalanche, EVM.celo, EVM.cronos,
       EVM.kaia, EVM.flowEvm, EVM.chiliz, EVM.gnosis, EVM.rootstock,
-      EVM.algorand, EVM.hedera, EVM.tronEvm,
+      EVM.algorand, EVM.hedera, EVM.tronEvm, EVM.hyperEvm, EVM.monad, EVM.plasma,
       NONEVM.solana, NONEVM.ton, NONEVM.tron, NONEVM.stacks,
     ],
   },
