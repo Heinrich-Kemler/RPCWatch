@@ -37,6 +37,7 @@ const APEX_PROVIDERS: Record<string, ProviderDef> = {
   '1rpc.io': { name: '1RPC', id: '1rpc', kind: 'public-rpc-aggregator' },
   'blastapi.io': { name: 'Blast API', id: 'blastapi', kind: 'public-rpc-aggregator' },
   'blockpi.network': { name: 'BlockPI', id: 'blockpi', kind: 'public-rpc-aggregator' },
+  'blockvectra.com': { name: 'BlockVectra', id: 'blockvectra', kind: 'public-rpc-aggregator' },
   'tenderly.co': { name: 'Tenderly', id: 'tenderly', kind: 'public-rpc-aggregator' },
   'onfinality.io': { name: 'OnFinality', id: 'onfinality', kind: 'public-rpc-aggregator' },
   'omniatech.io': { name: 'Omnia', id: 'omnia', kind: 'public-rpc-aggregator' },
